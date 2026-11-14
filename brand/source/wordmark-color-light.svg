@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 220" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <style type="text/css">
+      @import url("https://api.fontshare.com/v2/css?f[]=satoshi@900,700,500&amp;display=swap");
+      .b { font-family: 'Satoshi', system-ui, sans-serif; font-weight: 500; fill: #14B8A6; }
+      .body { font-family: 'Satoshi', system-ui, sans-serif; font-weight: 700; fill: #0F172A; letter-spacing: -3.6px; }
+    </style>
+  </defs>
+  <text x="500" y="170" text-anchor="middle" font-size="180">
+    <tspan class="b">[</tspan><tspan class="body">WinClip</tspan><tspan class="b">]</tspan>
+  </text>
+</svg>

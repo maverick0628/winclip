@@ -1,0 +1,75 @@
+# Pin line endings so cross-machine sync (e.g. Sync\SHARED_FILES) doesn't
+# produce 161-file CRLF↔LF noise commits regardless of each machine's
+# core.autocrlf setting.
+#
+# Rule: text files are stored LF in the repo; working-copy line endings
+# follow per-extension `eol=` overrides where a tool requires a specific form.
+
+* text=auto
+
+# C# / WPF / .NET sources — let Git normalize on commit, native on checkout
+*.cs           text diff=csharp
+*.xaml         text
+*.xml          text
+*.config       text
+*.props        text
+*.targets      text
+*.csproj       text
+*.sln          text eol=crlf
+*.json         text
+*.md           text
+*.yml          text eol=lf
+*.yaml         text eol=lf
+*.resx         text
+*.ruleset      text
+*.editorconfig text
+*.gitattributes text eol=lf
+*.gitignore    text eol=lf
+
+# Windows-only scripts — convention is CRLF
+*.ps1          text eol=crlf
+*.psm1         text eol=crlf
+*.psd1         text eol=crlf
+*.bat          text eol=crlf
+*.cmd          text eol=crlf
+
+# Cross-platform shell — must be LF or they break on Linux/macOS
+*.sh           text eol=lf
+
+# Binary assets — never touch line endings
+*.png          binary
+*.jpg          binary
+*.jpeg         binary
+*.gif          binary
+*.ico          binary
+*.icns         binary
+*.bmp          binary
+*.tif          binary
+*.tiff         binary
+*.webp         binary
+*.svg          text
+*.pdf          binary
+*.ttf          binary
+*.otf          binary
+*.woff         binary
+*.woff2        binary
+*.eot          binary
+*.zip          binary
+*.7z           binary
+*.tar          binary
+*.gz           binary
+*.dll          binary
+*.exe          binary
+*.pdb          binary
+*.snk          binary
+*.pfx          binary
+*.cer          binary
+*.appx         binary
+*.appxbundle   binary
+*.msix         binary
+*.msixbundle   binary
+*.nupkg        binary
+*.wav          binary
+*.mp3          binary
+*.mp4          binary
+*.webm         binary

@@ -1,0 +1,38 @@
+{
+  "comment": "Per-app rules for selection gestures. Process names are lowercase, without .exe; '*' matches any run of characters. ':name:' refers to a group. Effects: deny (never pop), terminal (never send Ctrl+C/X), allowArrowDrag (a drag may pop with the arrow cursor; only for apps whose text area shows an arrow, never a whole browser, where tab and scrollbar drags show one too). The user's excluded apps in Settings always win.",
+  "groups": {
+    "remote-desktop": [
+      "mstsc", "msrdc", "vmconnect", "vmware", "vmplayer", "virtualboxvm",
+      "parsecd", "anydesk", "teamviewer", "rustdesk", "vncviewer", "tvnviewer", "moonlight"
+    ],
+    "creative-apps": [
+      "photoshop", "illustrator", "afterfx", "adobe premiere pro", "indesign", "lightroom",
+      "blender", "krita", "gimp-*", "clipstudiopaint", "mspaint", "paintdotnet",
+      "affinity*", "davinci resolve", "resolve", "unity", "unrealeditor"
+    ],
+    "terminal-apps": [
+      "windowsterminal", "alacritty", "wezterm-gui", "tabby", "hyper", "warp",
+      "mintty", "conemu64", "conemu", "putty", "kitty", "mobaxterm"
+    ]
+  },
+  "rules": [
+    {
+      "name": "remote-desktop",
+      "comment": "Keystrokes go to the remote machine, where Ctrl+C may interrupt a program",
+      "process": [":remote-desktop:"],
+      "effect": "deny"
+    },
+    {
+      "name": "creative-apps",
+      "comment": "Drags are painting, moving and selecting objects, not text",
+      "process": [":creative-apps:"],
+      "effect": "deny"
+    },
+    {
+      "name": "terminal-apps",
+      "comment": "Terminals whose window class WinClip doesn't recognise on its own",
+      "process": [":terminal-apps:"],
+      "effect": "terminal"
+    }
+  ]
+}

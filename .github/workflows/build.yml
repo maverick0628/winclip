@@ -1,0 +1,75 @@
+name: Build & Test
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  # package-release.yml dispatches this on its manifest branch. A PR opened
+  # with GITHUB_TOKEN doesn't fire pull_request, so without this the required
+  # `build` check would never report and the manifest PR could never merge.
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore WinClip.sln
+
+      - name: Build solution
+        run: dotnet build WinClip.sln --configuration Release --no-restore
+
+      - name: Download released installers for the signature tests
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # The tests check each file's SHA-256, so the GitHub release copy is as good as
+          # R2's, and runners can't fetch installers through Cloudflare (403).
+          # A fork without these releases skips the signature tests: the variable is only
+          # set when the download produced a file. The canonical repository must have them,
+          # because these tests are the only check of the update signer pin against a real
+          # signed installer, so a missing file fails the build there.
+          $missing = $false
+          $ErrorActionPreference = 'Continue'
+          $installers = @(
+            @{ Tag = 'v2.1.1'; Name = 'WinClip-2.1.1-x64-Setup.exe'; Variable = 'WINCLIP_SIGNED_INSTALLER' },
+            @{ Tag = 'v2.2.0'; Name = 'WinClip-2.2.0-x64-Setup.exe'; Variable = 'WINCLIP_SIGNED_INSTALLER_2_2_0' }
+          )
+          foreach ($installer in $installers) {
+            gh release download $installer.Tag --repo "${{ github.repository }}" --pattern $installer.Name --dir "$env:RUNNER_TEMP" --clobber
+            $file = Join-Path $env:RUNNER_TEMP $installer.Name
+            if (Test-Path -LiteralPath $file) {
+              "$($installer.Variable)=$file" >> $env:GITHUB_ENV
+            } else {
+              Write-Output "::notice::$($installer.Name) is not available from release $($installer.Tag); its signature test will be skipped."
+              $missing = $true
+            }
+          }
+          if ($missing -and '${{ github.repository }}' -eq 'maverick0628/winclip') {
+            Write-Output "::error::The signed installers must be attached to releases v2.1.1 and v2.2.0 in this repository."
+            exit 1
+          }
+          exit 0
+
+      - name: Run root tests
+        run: dotnet test WinClip.Tests/WinClip.Tests.csproj --configuration Release --no-build --verbosity normal --logger "trx;LogFileName=root-tests.trx"
+
+      - name: Run actions tests
+        run: dotnet test src/WinClip.Tests/WinClip.Tests.csproj --configuration Release --no-build --verbosity normal --logger "trx;LogFileName=actions-tests.trx"
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: "**/*.trx"

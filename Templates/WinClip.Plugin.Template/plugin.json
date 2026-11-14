@@ -1,0 +1,19 @@
+{
+  "id": "PLUGIN_ID_PLACEHOLDER",
+  "name": "PLUGIN_NAME_PLACEHOLDER",
+  "version": "PLUGIN_VERSION_PLACEHOLDER",
+  "description": "PLUGIN_DESCRIPTION_PLACEHOLDER",
+  "author": "PLUGIN_AUTHOR_PLACEHOLDER",
+  "main": "WinClip.Plugin.Template.dll",
+  "homepage": "https://github.com/username/repository",
+  "license": "MIT",
+  "tags": [
+    "text",
+    "utility"
+  ],
+  "minWinClipVersion": "1.0.0",
+  "requirements": {
+    "os": "windows",
+    "dotnet": "8.0"
+  }
+}

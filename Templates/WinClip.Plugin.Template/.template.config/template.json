@@ -1,0 +1,69 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "WinClip Contributors",
+  "classifications": [ "WinClip", "Plugin" ],
+  "identity": "WinClip.Plugin.Template",
+  "name": "WinClip Plugin",
+  "shortName": "winclip-plugin",
+  "tags": {
+    "language": "C#",
+    "type": "project"
+  },
+  "sourceName": "WinClip.Plugin.Template",
+  "preferNameDirectory": true,
+  "symbols": {
+    "PluginId": {
+      "type": "parameter",
+      "datatype": "string",
+      "defaultValue": "com.example.myplugin",
+      "replaces": "PLUGIN_ID_PLACEHOLDER",
+      "description": "Unique identifier for the plugin (e.g., com.company.pluginname)"
+    },
+    "PluginName": {
+      "type": "parameter",
+      "datatype": "string",
+      "defaultValue": "My Plugin",
+      "replaces": "PLUGIN_NAME_PLACEHOLDER",
+      "description": "Display name for the plugin"
+    },
+    "PluginVersion": {
+      "type": "parameter",
+      "datatype": "string",
+      "defaultValue": "1.0.0",
+      "replaces": "PLUGIN_VERSION_PLACEHOLDER",
+      "description": "Plugin version (semantic versioning)"
+    },
+    "PluginDescription": {
+      "type": "parameter",
+      "datatype": "string",
+      "defaultValue": "A WinClip plugin",
+      "replaces": "PLUGIN_DESCRIPTION_PLACEHOLDER",
+      "description": "Brief description of what the plugin does"
+    },
+    "PluginAuthor": {
+      "type": "parameter",
+      "datatype": "string",
+      "defaultValue": "Your Name",
+      "replaces": "PLUGIN_AUTHOR_PLACEHOLDER",
+      "description": "Plugin author name"
+    },
+    "SDKVersion": {
+      "type": "parameter",
+      "datatype": "string",
+      "defaultValue": "1.0.0",
+      "replaces": "SDK_VERSION_PLACEHOLDER",
+      "description": "WinClip.SDK NuGet package version"
+    }
+  },
+  "primaryOutputs": [
+    {
+      "path": "WinClip.Plugin.Template.csproj"
+    },
+    {
+      "path": "MyPlugin.cs"
+    },
+    {
+      "path": "plugin.json"
+    }
+  ]
+}

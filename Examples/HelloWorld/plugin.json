@@ -1,0 +1,19 @@
+{
+  "id": "com.winclip.examples.helloworld",
+  "name": "Hello World",
+  "version": "1.0.0",
+  "description": "A simple example plugin that greets the user",
+  "author": "WinClip Team",
+  "main": "HelloWorld.dll",
+  "homepage": "https://github.com/winclip/sdk",
+  "license": "MIT",
+  "tags": [
+    "example",
+    "tutorial"
+  ],
+  "minWinClipVersion": "1.0.0",
+  "requirements": {
+    "os": "windows",
+    "dotnet": "8.0"
+  }
+}

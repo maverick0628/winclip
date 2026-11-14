@@ -1,0 +1,34 @@
+VERIFICATION
+Verification is intended to assist the Chocolatey moderators and community
+in verifying that this package's contents are trustworthy.
+
+This package downloads the official WinClip installer at install time. It is
+not repackaged, and no binary ships inside the package.
+
+1. Download the installer from the official WinClip website:
+
+   x64:   https://duncansmith.tech/apps/winclip/releases/v2.2.0/WinClip-2.2.0-x64-Setup.exe
+   arm64: https://duncansmith.tech/apps/winclip/releases/v2.2.0/WinClip-2.2.0-arm64-Setup.exe
+
+2. Get the SHA256 checksum with either:
+   - the PowerShell function 'Get-FileHash'
+   - the Chocolatey utility 'checksum.exe'
+
+3. The checksums must match these. They are what tools\chocolateyinstall.ps1
+   verifies against, and what SHA256SUMS.txt beside the installers publishes:
+
+   WinClip-2.2.0-x64-Setup.exe
+   SHA256: 730F24B89F251663CD09C9DF8A13774A253AE27961E5F22FC8B2C3C8767DBDF8
+
+   WinClip-2.2.0-arm64-Setup.exe
+   SHA256: 2BF03F18DEB43623C76B69709F54A86034353E89DBC74644AC20EE805A92C6AE
+
+4. The installers are signed. Check the signature with:
+
+   (Get-AuthenticodeSignature .\WinClip-2.2.0-x64-Setup.exe).SignerCertificate.Subject
+
+   It reads CN="DST Digital, LLC", O="DST Digital, LLC", L=Atlanta, S=Georgia, C=US.
+
+PROJECT INFORMATION
+===================
+Project Site: https://duncansmith.tech/apps/winclip

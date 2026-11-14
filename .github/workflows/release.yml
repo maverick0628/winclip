@@ -1,0 +1,594 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: windows-latest
+    # Gated on the `release` GitHub environment so the OIDC token subject is a
+    # stable `repo:maverick0628/winclip:environment:release` that matches our
+    # single Entra federated credential. Tag-pattern subjects like
+    # `refs/tags/v*` aren't supported by federated credential subject matching
+    # (strict string compare), so we pin to an environment instead. Future
+    # human-approval gates can be added via environment protection rules.
+    environment: release
+    permissions:
+      contents: write
+      id-token: write   # required for OIDC federated auth to Azure Trusted Signing
+
+    env:
+      # Azure Trusted Signing configuration — set these as GitHub Actions secrets
+      # or (for non-secret ones) repository variables:
+      #
+      #   Secrets (settings → Secrets and variables → Actions → New secret):
+      #     AZURE_TENANT_ID
+      #     AZURE_CLIENT_ID
+      #     AZURE_SUBSCRIPTION_ID
+      #
+      #   Variables (settings → Secrets and variables → Actions → Variables tab):
+      #     TRUSTED_SIGNING_ENDPOINT         e.g. https://eus.codesigning.azure.net/
+      #     TRUSTED_SIGNING_ACCOUNT_NAME     e.g. winclip-signing
+      #     TRUSTED_SIGNING_CERT_PROFILE     e.g. winclip-public-trust
+      #
+      # See delegated-setup notes at the bottom of this file.
+      TRUSTED_SIGNING_ENDPOINT: ${{ vars.TRUSTED_SIGNING_ENDPOINT }}
+      TRUSTED_SIGNING_ACCOUNT_NAME: ${{ vars.TRUSTED_SIGNING_ACCOUNT_NAME }}
+      TRUSTED_SIGNING_CERT_PROFILE: ${{ vars.TRUSTED_SIGNING_CERT_PROFILE }}
+      # Installed copies poll latest.json on R2 (AppInfo.UpdateUrl), not this
+      # repo's releases. The GitHub release at the end of this job is an archive
+      # and the source for package-release.yml, not the update channel. R2 setup
+      # notes are at the bottom of this file.
+      R2_BUCKET: winclip-updates
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      # Everything cheap that can make a release unreachable is checked here,
+      # before the build and signing that follow. A stable tag that cannot
+      # publish its update feed fails in seconds, not after the installers exist.
+      - name: Preflight (version, feed URL, R2 access)
+        id: version
+        shell: pwsh
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+        run: |
+          $version = $env:GITHUB_REF_NAME -replace '^v', ''
+          if ($version -notmatch '^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$') {
+            Write-Output "::error::Tag '$env:GITHUB_REF_NAME' is not vMAJOR.MINOR.PATCH or vMAJOR.MINOR.PATCH-prerelease."
+            exit 1
+          }
+          $stable = -not $version.Contains('-')
+
+          # The feed URL comes from the constant the app polls, so the upload
+          # target cannot drift from what shipped binaries read.
+          $match = Select-String -Path AppInfo.cs -Pattern 'const string UpdateUrl = "([^"]+)"'
+          if (-not $match) {
+            Write-Output "::error::Could not read UpdateUrl from AppInfo.cs."
+            exit 1
+          }
+          $feedUrl = $match.Matches[0].Groups[1].Value
+          if ($feedUrl -notmatch '^https://[^/]+(/.*)?/latest\.json$') {
+            Write-Output "::error::AppInfo.UpdateUrl '$feedUrl' is not an https .../latest.json URL."
+            exit 1
+          }
+          $publicBase = $feedUrl.Substring(0, $feedUrl.Length - '/latest.json'.Length)
+
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "stable=$($stable.ToString().ToLowerInvariant())" >> $env:GITHUB_OUTPUT
+          "feed_url=$feedUrl" >> $env:GITHUB_OUTPUT
+          "public_base=$publicBase" >> $env:GITHUB_OUTPUT
+          Write-Output "Building version $version (stable: $stable), feed $feedUrl"
+
+          if (-not $stable) {
+            Write-Output "::notice::$version is a prerelease. It gets a GitHub prerelease only. R2 and latest.json are left alone so installed copies are not offered it."
+            exit 0
+          }
+
+          $missing = @()
+          if ([string]::IsNullOrWhiteSpace($env:R2_ACCOUNT_ID)) { $missing += 'R2_ACCOUNT_ID' }
+          if ([string]::IsNullOrWhiteSpace($env:AWS_ACCESS_KEY_ID)) { $missing += 'R2_ACCESS_KEY_ID' }
+          if ([string]::IsNullOrWhiteSpace($env:AWS_SECRET_ACCESS_KEY)) { $missing += 'R2_SECRET_ACCESS_KEY' }
+          if ($missing.Count -gt 0) {
+            Write-Output "::error::Missing repo secrets: $($missing -join ', '). Stable releases publish the installers and latest.json to the R2 bucket '$env:R2_BUCKET'. Without them no installed copy of WinClip would ever see $version."
+            exit 1
+          }
+
+          if (-not (Get-Command aws -ErrorAction SilentlyContinue)) {
+            Write-Output "::error::aws CLI is not on the runner."
+            exit 1
+          }
+          $endpoint = "https://$($env:R2_ACCOUNT_ID).r2.cloudflarestorage.com"
+          # The runner's pwsh wrapper sets 'Stop'. The aws probes below are expected
+          # to write to stderr and exit non-zero, so judge them by exit code only.
+          $ErrorActionPreference = 'Continue'
+
+          # Non-empty is not the same as working. Prove the token reaches the bucket.
+          aws s3api head-bucket --bucket $env:R2_BUCKET --endpoint-url $endpoint *> $null
+          if ($LASTEXITCODE -ne 0) {
+            Write-Output "::error::Cannot reach R2 bucket '$env:R2_BUCKET' with the configured secrets. Check the token has Object Read & Write on that bucket and that R2_ACCOUNT_ID is right."
+            exit 1
+          }
+
+          # The installers go up before the read-back, and a published version is
+          # never rebuilt, so a public host that is not wired up yet would burn this
+          # version number. Check it answers now: 404 before the first release,
+          # 200 after. DNS failure or 403 means the custom domain is not connected,
+          # unless Cloudflare challenged the runner. The zone challenges GitHub
+          # runners that send no User-Agent or PowerShell's default one, so every
+          # public check sends the User-Agent installed copies send.
+          try {
+            $probe = Invoke-WebRequest -Uri $feedUrl -Method Head -TimeoutSec 20 -SkipHttpErrorCheck -UserAgent "WinClip/$version"
+            $probeCode = [int]$probe.StatusCode
+            $mitigated = "$($probe.Headers['cf-mitigated'])"
+          } catch {
+            $probeCode = 0
+            Write-Output "  $feedUrl -> $($_.Exception.Message)"
+          }
+          if ($mitigated) {
+            Write-Output "::error::Cloudflare answered $probeCode with cf-mitigated=$mitigated for $feedUrl. Add a WAF skip rule for that hostname before tagging."
+            exit 1
+          }
+          if ($probeCode -ne 200 -and $probeCode -ne 404) {
+            Write-Output "::error::$feedUrl answered $probeCode. Expected 404 (no feed yet) or 200. Connect the custom domain to '$env:R2_BUCKET' before tagging."
+            exit 1
+          }
+
+          # Installers are served immutable. Rebuilding a published version would
+          # leave the edge serving old bytes under a feed with new hashes.
+          foreach ($arch in 'x64', 'arm64') {
+            $key = "WinClip-$version-$arch-Setup.exe"
+            aws s3api head-object --bucket $env:R2_BUCKET --key $key --endpoint-url $endpoint *> $null
+            if ($LASTEXITCODE -eq 0) {
+              Write-Output "::error::$key already exists in R2. A published version is never rebuilt. Bump the version and tag again."
+              exit 1
+            }
+          }
+
+          Write-Output "R2 bucket '$env:R2_BUCKET' is reachable and $version is not published yet"
+          # head-object's expected 404 leaves a non-zero exit code behind.
+          $global:LASTEXITCODE = 0
+
+      - name: Restore dependencies
+        run: dotnet restore WinClip.sln
+
+      - name: Run tests
+        run: |
+          dotnet test WinClip.Tests/WinClip.Tests.csproj --configuration Release --verbosity normal --blame-hang-timeout 5m
+          dotnet test src/WinClip.Tests/WinClip.Tests.csproj --configuration Release --verbosity normal --blame-hang-timeout 5m
+
+      - name: Publish x64
+        run: >
+          dotnet publish WinClip.csproj
+          --configuration Release
+          --runtime win-x64
+          --self-contained false
+          -p:PublishReadyToRun=true
+          -p:Version=${{ steps.version.outputs.version }}
+          --output bin/Release/net8.0-windows/win-x64/publish
+
+      - name: Publish ARM64
+        run: >
+          dotnet publish WinClip.csproj
+          --configuration Release
+          --runtime win-arm64
+          --self-contained false
+          -p:Version=${{ steps.version.outputs.version }}
+          --output bin/Release/net8.0-windows/win-arm64/publish
+
+      # ── Code signing (Azure Trusted Signing) ─────────────────────────────
+      #
+      # We authenticate to Azure via OIDC federated credentials (no secrets
+      # stored in the repo) and sign our own binaries BEFORE Inno Setup
+      # embeds them, so the final installer bundles signed .exe/.dll files.
+      # The installer .exe itself is signed in a later step.
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Sign WinClip binaries (x64)
+        uses: azure/trusted-signing-action@v0.5.1
+        with:
+          endpoint: ${{ env.TRUSTED_SIGNING_ENDPOINT }}
+          trusted-signing-account-name: ${{ env.TRUSTED_SIGNING_ACCOUNT_NAME }}
+          certificate-profile-name: ${{ env.TRUSTED_SIGNING_CERT_PROFILE }}
+          # Only sign our own assemblies — do NOT re-sign third-party DLLs
+          # (Microsoft.Extensions.*, WPF-UI, etc.) which
+          # already carry signatures from their authors.
+          files: |
+            ${{ github.workspace }}\bin\Release\net8.0-windows\win-x64\publish\WinClip.exe
+            ${{ github.workspace }}\bin\Release\net8.0-windows\win-x64\publish\WinClip.Core.dll
+            ${{ github.workspace }}\bin\Release\net8.0-windows\win-x64\publish\WinClip.Actions.dll
+            ${{ github.workspace }}\bin\Release\net8.0-windows\win-x64\publish\WinClip.Extensions.dll
+            ${{ github.workspace }}\bin\Release\net8.0-windows\win-x64\publish\WinClip.Integrations.dll
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+
+      - name: Sign WinClip binaries (ARM64)
+        uses: azure/trusted-signing-action@v0.5.1
+        with:
+          endpoint: ${{ env.TRUSTED_SIGNING_ENDPOINT }}
+          trusted-signing-account-name: ${{ env.TRUSTED_SIGNING_ACCOUNT_NAME }}
+          certificate-profile-name: ${{ env.TRUSTED_SIGNING_CERT_PROFILE }}
+          files: |
+            ${{ github.workspace }}\bin\Release\net8.0-windows\win-arm64\publish\WinClip.exe
+            ${{ github.workspace }}\bin\Release\net8.0-windows\win-arm64\publish\WinClip.Core.dll
+            ${{ github.workspace }}\bin\Release\net8.0-windows\win-arm64\publish\WinClip.Actions.dll
+            ${{ github.workspace }}\bin\Release\net8.0-windows\win-arm64\publish\WinClip.Extensions.dll
+            ${{ github.workspace }}\bin\Release\net8.0-windows\win-arm64\publish\WinClip.Integrations.dll
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+
+      - name: Build x64 installer with Inno Setup
+        shell: cmd
+        run: |
+          powershell -Command "(Get-Content installer\WinClipSetup.iss) -replace '#define MyAppVersion\s+\".*\"', '#define MyAppVersion   \"${{ steps.version.outputs.version }}\"' | Set-Content installer\WinClipSetup.iss"
+          "%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe" installer\WinClipSetup.iss
+
+      - name: Build ARM64 installer with Inno Setup
+        shell: cmd
+        run: |
+          powershell -Command "(Get-Content installer\WinClipSetup-arm64.iss) -replace '#define MyAppVersion\s+\".*\"', '#define MyAppVersion   \"${{ steps.version.outputs.version }}\"' | Set-Content installer\WinClipSetup-arm64.iss"
+          "%ProgramFiles(x86)%\Inno Setup 6\ISCC.exe" installer\WinClipSetup-arm64.iss
+
+      - name: Sign x64 installer
+        uses: azure/trusted-signing-action@v0.5.1
+        with:
+          endpoint: ${{ env.TRUSTED_SIGNING_ENDPOINT }}
+          trusted-signing-account-name: ${{ env.TRUSTED_SIGNING_ACCOUNT_NAME }}
+          certificate-profile-name: ${{ env.TRUSTED_SIGNING_CERT_PROFILE }}
+          files: |
+            ${{ github.workspace }}\installer\output\WinClip-${{ steps.version.outputs.version }}-x64-Setup.exe
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+
+      - name: Sign ARM64 installer
+        uses: azure/trusted-signing-action@v0.5.1
+        with:
+          endpoint: ${{ env.TRUSTED_SIGNING_ENDPOINT }}
+          trusted-signing-account-name: ${{ env.TRUSTED_SIGNING_ACCOUNT_NAME }}
+          certificate-profile-name: ${{ env.TRUSTED_SIGNING_CERT_PROFILE }}
+          files: |
+            ${{ github.workspace }}\installer\output\WinClip-${{ steps.version.outputs.version }}-arm64-Setup.exe
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+
+      # Installed copies launch an update only if its signer matches UpdateSignerPin.
+      # Run that same check on the installers just signed, so a release every client
+      # would refuse fails here, before anything reaches R2 or GitHub.
+      - name: Check installers against the update signer pin
+        shell: pwsh
+        run: |
+          $version = "${{ steps.version.outputs.version }}"
+          foreach ($arch in 'x64', 'arm64') {
+            $name = "WinClip-$version-$arch-Setup.exe"
+            $env:WINCLIP_RELEASE_INSTALLER = (Resolve-Path "installer/output/$name").Path
+            $results = Join-Path $env:RUNNER_TEMP "signer-pin-$arch"
+            dotnet test WinClip.Tests/WinClip.Tests.csproj --configuration Release --no-build `
+              --filter "FullyQualifiedName~AuthenticodeVerifierTests.IsTrusted_AcceptsTheInstallerThisReleaseSigned" `
+              --logger "trx;LogFileName=signer-pin.trx" --results-directory $results
+            if ($LASTEXITCODE -ne 0) {
+              Write-Output "::error::$name does not match UpdateSignerPin. Installed copies would refuse it."
+              exit 1
+            }
+            # A filter that matched nothing, or a skipped check, also exits 0.
+            if (-not (Select-String -Path (Join-Path $results "signer-pin.trx") -SimpleMatch "PIN-ACCEPTED $name" -Quiet)) {
+              Write-Output "::error::The signer pin check did not run against $name."
+              exit 1
+            }
+          }
+
+      - name: Calculate checksums
+        id: checksums
+        shell: pwsh
+        run: |
+          $version = "${{ steps.version.outputs.version }}"
+          # Checksums must be calculated AFTER signing — signing mutates the
+          # file in place, so pre-sign hashes would mismatch the published
+          # artifact and break winget/choco/scoop manifest verification.
+          $x64 = Get-FileHash "installer/output/WinClip-$version-x64-Setup.exe" -Algorithm SHA256
+          $arm64 = Get-FileHash "installer/output/WinClip-$version-arm64-Setup.exe" -Algorithm SHA256
+          echo "hash_x64=$($x64.Hash)" >> $env:GITHUB_OUTPUT
+          echo "hash_arm64=$($arm64.Hash)" >> $env:GITHUB_OUTPUT
+          "$($x64.Hash)  WinClip-$version-x64-Setup.exe" | Out-File "installer/output/SHA256SUMS.txt" -Encoding ASCII
+          "$($arm64.Hash)  WinClip-$version-arm64-Setup.exe" | Out-File "installer/output/SHA256SUMS.txt" -Append -Encoding ASCII
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: WinClip-${{ steps.version.outputs.version }}
+          path: |
+            installer/output/WinClip-*.exe
+            installer/output/SHA256SUMS.txt
+
+      # ── Update feed on Cloudflare R2 (stable tags only) ───────────────────
+      #
+      # Published before the GitHub release, so a failure here cannot leave a
+      # release that the feed does not advertise.
+
+      - name: Build update feed
+        if: steps.version.outputs.stable == 'true'
+        shell: pwsh
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          PUBLIC_BASE: ${{ steps.version.outputs.public_base }}
+        run: |
+          # The feed must never advertise a version the binary does not report,
+          # or every install would be offered the same update forever.
+          foreach ($rid in 'win-x64', 'win-arm64') {
+            $exe = "bin/Release/net8.0-windows/$rid/publish/WinClip.exe"
+            $reported = ((Get-Item $exe).VersionInfo.ProductVersion -split '\+')[0]
+            if ($reported -ne $env:VERSION) {
+              Write-Output "::error::$exe reports version '$reported' but the tag is $env:VERSION."
+              exit 1
+            }
+          }
+
+          ./scripts/New-UpdateFeed.ps1 `
+            -Version $env:VERSION `
+            -BaseUrl $env:PUBLIC_BASE `
+            -X64Installer "installer/output/WinClip-$env:VERSION-x64-Setup.exe" `
+            -Arm64Installer "installer/output/WinClip-$env:VERSION-arm64-Setup.exe" `
+            -OutFile installer/output/latest.json
+          Get-Content installer/output/latest.json
+
+      - name: Publish installers and feed to R2
+        if: steps.version.outputs.stable == 'true'
+        shell: pwsh
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+        run: |
+          $missing = @()
+          if ([string]::IsNullOrWhiteSpace($env:R2_ACCOUNT_ID)) { $missing += 'R2_ACCOUNT_ID' }
+          if ([string]::IsNullOrWhiteSpace($env:AWS_ACCESS_KEY_ID)) { $missing += 'R2_ACCESS_KEY_ID' }
+          if ([string]::IsNullOrWhiteSpace($env:AWS_SECRET_ACCESS_KEY)) { $missing += 'R2_SECRET_ACCESS_KEY' }
+          if ($missing.Count -gt 0) {
+            Write-Output "::error::Missing repo secrets: $($missing -join ', '). Refusing to create a release the update feed does not advertise."
+            exit 1
+          }
+          $endpoint = "https://$($env:R2_ACCOUNT_ID).r2.cloudflarestorage.com"
+
+          # Installers first: a feed pointing at an installer that is not up yet
+          # would be briefly live and broken.
+          foreach ($arch in 'x64', 'arm64') {
+            $name = "WinClip-$env:VERSION-$arch-Setup.exe"
+            aws s3 cp "installer/output/$name" "s3://$env:R2_BUCKET/$name" `
+              --endpoint-url $endpoint `
+              --content-type application/octet-stream `
+              --cache-control "public, max-age=31536000, immutable"
+            if ($LASTEXITCODE -ne 0) {
+              Write-Output "::error::Upload of $name to R2 failed."
+              exit 1
+            }
+          }
+
+          # Short TTL: the feed changes on every release.
+          aws s3 cp installer/output/latest.json "s3://$env:R2_BUCKET/latest.json" `
+            --endpoint-url $endpoint `
+            --content-type application/json `
+            --cache-control "public, max-age=300"
+          if ($LASTEXITCODE -ne 0) {
+            Write-Output "::error::Upload of latest.json to R2 failed."
+            exit 1
+          }
+
+      # "Uploaded" and "users can fetch it" are different claims. Read the feed
+      # back from the URL the app polls and require the bytes this job wrote.
+      - name: Verify the published feed
+        if: steps.version.outputs.stable == 'true'
+        shell: pwsh
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          FEED_URL: ${{ steps.version.outputs.feed_url }}
+          PUBLIC_BASE: ${{ steps.version.outputs.public_base }}
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+        run: |
+          $expected = (Get-FileHash installer/output/latest.json -Algorithm SHA256).Hash
+          $served = Join-Path $env:RUNNER_TEMP 'served-latest.json'
+
+          # R2 can answer 404 briefly after a write, and an edge copy of the
+          # previous feed can live up to its 300s max-age.
+          $ok = $false
+          for ($attempt = 1; $attempt -le 36; $attempt++) {
+            try {
+              Invoke-WebRequest -Uri $env:FEED_URL -OutFile $served -TimeoutSec 20 -UserAgent "WinClip/$env:VERSION"
+              if ((Get-FileHash $served -Algorithm SHA256).Hash -eq $expected) { $ok = $true; break }
+              Write-Output "  attempt ${attempt}: $env:FEED_URL is not the feed this job published yet"
+            } catch {
+              Write-Output "  attempt ${attempt}: $env:FEED_URL -> $($_.Exception.Message)"
+            }
+            Start-Sleep -Seconds 10
+          }
+          if (-not $ok) {
+            Write-Output "::error::$env:FEED_URL did not serve the published latest.json within 6 minutes."
+            exit 1
+          }
+          Write-Output "OK  $env:FEED_URL"
+
+          $feed = Get-Content $served -Raw | ConvertFrom-Json
+          if ($feed.version -ne $env:VERSION) {
+            Write-Output "::error::Served feed advertises '$($feed.version)', expected $env:VERSION."
+            exit 1
+          }
+
+          foreach ($arch in 'x64', 'arm64') {
+            $name = "WinClip-$env:VERSION-$arch-Setup.exe"
+            $url = "$env:PUBLIC_BASE/$name"
+            if ($feed.installers.$arch.url -ne $url) {
+              Write-Output "::error::Feed $arch url is '$($feed.installers.$arch.url)', expected $url."
+              exit 1
+            }
+            $local = (Get-FileHash "installer/output/$name" -Algorithm SHA256).Hash
+            if ($feed.installers.$arch.sha256 -ne $local) {
+              Write-Output "::error::Feed $arch sha256 does not match installer/output/$name."
+              exit 1
+            }
+            # The object in R2 is the source of truth. Cloudflare refuses .exe
+            # downloads from GitHub runners with a 403 even with the WinClip
+            # User-Agent (v2.1.2 run 35253428636), while home connections get
+            # 200. So the bucket copy must match, and the public URL only warns.
+            $file = Get-Item "installer/output/$name"
+            $head = aws s3api head-object --bucket $env:R2_BUCKET --key $name --endpoint-url "https://$($env:R2_ACCOUNT_ID).r2.cloudflarestorage.com" --output json | ConvertFrom-Json
+            if ($LASTEXITCODE -ne 0 -or $null -eq $head) {
+              Write-Output "::error::$name is not in R2 bucket '$env:R2_BUCKET'."
+              exit 1
+            }
+            if ([long]$head.ContentLength -ne $file.Length) {
+              Write-Output "::error::$name in R2 is $($head.ContentLength) bytes, expected $($file.Length)."
+              exit 1
+            }
+            Write-Output "OK  r2://$env:R2_BUCKET/$name ($($file.Length) bytes)"
+
+            try {
+              $response = Invoke-WebRequest -Uri $url -Method Head -TimeoutSec 20 -SkipHttpErrorCheck -UserAgent "WinClip/$env:VERSION"
+              $code = [int]$response.StatusCode
+              $mitigated = "$($response.Headers['cf-mitigated'])"
+            } catch {
+              $code = 0
+              $mitigated = ''
+            }
+            if ($code -eq 200) {
+              Write-Output "OK  $url"
+            } else {
+              Write-Output "::warning::$url answered $code from this runner (cf-mitigated=$mitigated). Cloudflare blocks GitHub runners from .exe downloads, so check it from a normal connection."
+            }
+          }
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: WinClip v${{ steps.version.outputs.version }}
+          generate_release_notes: true
+          draft: false
+          prerelease: ${{ contains(steps.version.outputs.version, '-') }}
+          files: |
+            installer/output/WinClip-${{ steps.version.outputs.version }}-x64-Setup.exe
+            installer/output/WinClip-${{ steps.version.outputs.version }}-arm64-Setup.exe
+            installer/output/SHA256SUMS.txt
+
+# ─────────────────────────────────────────────────────────────────────────────
+# DELEGATED SETUP — one-time Azure configuration required before this workflow
+# will succeed on a tag push. These steps happen in the Azure portal + GitHub
+# repo settings and cannot be automated from here.
+#
+# 1. Create a Trusted Signing account in Azure:
+#    portal.azure.com → Create resource → Search "Trusted Signing" →
+#      • Subscription: (your paid subscription)
+#      • Resource group: winclip-prod (or whatever)
+#      • Account name: winclip-signing
+#      • Region: East US  (or another supported region — pick one close to
+#        github.com runners; East US works for GitHub-hosted Windows runners)
+#      • Pricing tier: Basic ($9.99/mo, 5,000 signatures included)
+#
+# 2. Start Identity Validation (Microsoft verifies DST Digital, LLC):
+#    Trusted Signing account → Identity validation → "Start new request"
+#      • Validation type: Public Trust (needed to sign publicly distributed apps)
+#      • Organization: DST Digital, LLC  (exact legal name)
+#      • Physical address, phone number, website
+#      • You will receive a verification call / email. Turnaround: 1–3 business days.
+#
+# 3. Create a Certificate Profile (after identity validation is approved):
+#    Trusted Signing account → Certificate profiles → "Create"
+#      • Name: winclip-public-trust
+#      • Profile type: Public Trust
+#      • Identity: select your approved DST Digital, LLC identity
+#
+# 4. Create a Microsoft Entra (AAD) App Registration for GitHub OIDC:
+#    portal.azure.com → Microsoft Entra ID → App registrations → "New registration"
+#      • Name: github-winclip-release
+#      • Supported accounts: single tenant
+#      • Redirect URI: (leave blank)
+#    After creation, on the Overview page copy:
+#      • Application (client) ID      → GitHub secret AZURE_CLIENT_ID
+#      • Directory (tenant) ID        → GitHub secret AZURE_TENANT_ID
+#
+# 5. Add federated credentials for GitHub Actions:
+#    App registration → Certificates & secrets → Federated credentials → "Add"
+#      • Scenario: GitHub Actions deploying Azure resources
+#      • Organization: maverick0628
+#      • Repository: winclip
+#      • Entity type: Tag (or Branch = master)
+#      • Tag pattern: v*
+#      • Name: github-winclip-release-tags
+#    This lets the workflow authenticate to Azure without any secrets.
+#
+# 6. Grant the app permission to sign:
+#    Trusted Signing account → Access control (IAM) → Add role assignment
+#      • Role: "Trusted Signing Certificate Profile Signer"
+#      • Assign access to: User, group, or service principal
+#      • Select: github-winclip-release (the app you just created)
+#
+# 7. Also capture your Subscription ID:
+#    portal.azure.com → Subscriptions → copy the Subscription ID
+#      → GitHub secret AZURE_SUBSCRIPTION_ID
+#
+# 8. Add to GitHub:
+#    github.com/maverick0628/winclip → Settings → Secrets and variables → Actions
+#      Secrets tab → New repository secret:
+#        AZURE_CLIENT_ID             (from step 4)
+#        AZURE_TENANT_ID             (from step 4)
+#        AZURE_SUBSCRIPTION_ID       (from step 7)
+#      Variables tab → New repository variable:
+#        TRUSTED_SIGNING_ENDPOINT    e.g. https://eus.codesigning.azure.net/
+#        TRUSTED_SIGNING_ACCOUNT_NAME  winclip-signing
+#        TRUSTED_SIGNING_CERT_PROFILE  winclip-public-trust
+#
+# Once all 8 steps are done, pushing a tag like `git tag v2.0.0 && git push
+# origin v2.0.0` will trigger this workflow and produce SIGNED installers.
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# UPDATE FEED ON CLOUDFLARE R2 — one-time setup before the next stable tag.
+# The preflight step fails a stable tag in seconds if any of this is missing.
+#
+# 1. Create the R2 bucket `winclip-updates` (Cloudflare dashboard → R2).
+#
+# 2. Connect the custom domain `winclip-updates.duncansmith.tech` to it
+#    (bucket → Settings → Public access → Custom Domains). duncansmith.tech is
+#    already a Cloudflare zone, so Cloudflare adds the DNS record itself. Leave
+#    the r2.dev URL disabled. The hostname is baked into every shipped build via
+#    AppInfo.UpdateUrl, so it must never change without keeping the old one up.
+#
+# 3. Keep bot challenges off that hostname (Bot Fight Mode, or a WAF skip rule
+#    for it). The app's HttpClient and this job's read-back cannot solve one.
+#
+# 4. Create an R2 API token with Object Read & Write on `winclip-updates` only,
+#    then add repo secrets (Settings → Secrets and variables → Actions):
+#      R2_ACCOUNT_ID          Cloudflare account ID
+#      R2_ACCESS_KEY_ID       the token's access key ID
+#      R2_SECRET_ACCESS_KEY   the token's secret access key
+#
+# 5. Optional check before tagging: https://winclip-updates.duncansmith.tech/latest.json
+#    should return a Cloudflare 404. Installed copies treat that as "no update".
+#
+# Stable tags (vX.Y.Z) upload both installers (immutable) and latest.json
+# (max-age=300), then read the feed back before creating the GitHub release.
+# Prerelease tags (vX.Y.Z-rc.1) skip R2 entirely.
+#
+# Installs on v2.1.1 or older poll the GitHub API and never read this feed.
+# They need one manual download of the first release that ships this change.
+# ─────────────────────────────────────────────────────────────────────────────

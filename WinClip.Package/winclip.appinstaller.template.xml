@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    WinClip MSIX App Installer template.
+
+    This file enables Windows to auto-update the MSIX bundle without going through
+    the Microsoft Store. Users install once by opening the .appinstaller URL in a
+    browser; Windows then polls that URL for new versions on the schedule below.
+
+    Release flow:
+      1. Build the MSIX bundle:  msbuild WinClip.Package.wapproj /p:Configuration=Release /p:Platform=x64
+         Output:                 WinClip.Package/AppPackages/WinClip.Package_<version>_x64_bundle/WinClip.Package_<version>_x64.msixbundle
+      2. Sign the bundle with the Azure Trusted Signing certificate (already wired in CI release.yml).
+      3. Substitute __VERSION__ below with the release version (must match Package.appxmanifest).
+      4. Upload the signed .msixbundle and the rendered .appinstaller to:
+             https://duncansmith.tech/apps/winclip/winclip.appinstaller
+             https://duncansmith.tech/apps/winclip/WinClip.msixbundle
+      5. First-time users install with: ms-appinstaller:?source=https://duncansmith.tech/apps/winclip/winclip.appinstaller
+         Existing users get the update automatically on next launch (or via the background task).
+
+    Update behavior:
+      - <OnLaunch HoursBetweenUpdateChecks="24" /> → throttled to once per 24h on launch
+      - <AutomaticBackgroundTask /> → Windows registers a maintenance task that polls
+        even when WinClip isn't running, so users on always-on machines get updates
+        without needing to launch the app
+
+    NOTE: UpdateSettings only takes effect when the .appinstaller is hosted under HTTPS.
+
+    Publisher must equal the subject of the certificate that signs the bundle, and the
+    bundle manifest's Identity Publisher must equal it too. This is the Trusted Signing
+    subject (UpdateSignerPin.SubjectDistinguishedName). Package.appxmanifest carries the
+    Store publisher ID instead, so a sideload build has to replace it with this value.
+-->
+<AppInstaller
+    xmlns="http://schemas.microsoft.com/appx/appinstaller/2018"
+    Version="__VERSION__.0"
+    Uri="https://duncansmith.tech/apps/winclip/winclip.appinstaller">
+
+  <MainBundle
+      Name="duncansmith.tech.WinClip"
+      Publisher="CN=&quot;DST Digital, LLC&quot;, O=&quot;DST Digital, LLC&quot;, L=Atlanta, S=Georgia, C=US"
+      Version="__VERSION__.0"
+      Uri="https://duncansmith.tech/apps/winclip/WinClip.msixbundle" />
+
+  <UpdateSettings>
+    <OnLaunch HoursBetweenUpdateChecks="24" />
+    <AutomaticBackgroundTask />
+  </UpdateSettings>
+
+</AppInstaller>

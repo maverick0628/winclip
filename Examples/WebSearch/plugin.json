@@ -1,0 +1,21 @@
+{
+  "id": "com.winclip.examples.websearch",
+  "name": "Web Search",
+  "version": "1.0.0",
+  "description": "Search the web using various search engines",
+  "author": "WinClip Team",
+  "main": "WebSearch.dll",
+  "homepage": "https://github.com/winclip/sdk",
+  "license": "MIT",
+  "tags": [
+    "example",
+    "search",
+    "web",
+    "integration"
+  ],
+  "minWinClipVersion": "1.0.0",
+  "requirements": {
+    "os": "windows",
+    "dotnet": "8.0"
+  }
+}

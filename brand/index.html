@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>WinClip — Brand Assets</title>
+<link rel="preconnect" href="https://api.fontshare.com" crossorigin>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@900,700,500&f[]=general-sans@600,500,400&f[]=jetbrains-mono@500,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-0: #0B1220; --bg-1: #0F172A; --bg-2: #1E293B;
+    --border: #334155; --text: #E2E8F0; --text-2: #94A3B8; --text-3: #64748B;
+    --teal: #2DD4BF; --light-bg: #F8FAFC;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg-0); color: var(--text); font-family: 'General Sans', system-ui; font-size: 15px; line-height: 1.5; }
+  .page { max-width: 1200px; margin: 0 auto; padding: 64px 32px 96px; }
+  header.top { margin-bottom: 56px; padding-bottom: 32px; border-bottom: 1px solid var(--border); }
+  h1 { font-family: 'Satoshi'; font-weight: 900; font-size: 48px; letter-spacing: -0.03em; margin-bottom: 8px; }
+  header.top p { color: var(--text-2); font-size: 16px; max-width: 760px; }
+  section.asset { margin-bottom: 56px; background: var(--bg-1); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .section-header { padding: 24px 32px; border-bottom: 1px solid var(--border); }
+  .section-label { font-family: 'JetBrains Mono'; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--teal); margin-bottom: 6px; }
+  h2 { font-family: 'Satoshi'; font-weight: 700; font-size: 22px; margin-bottom: 8px; }
+  .section-header p { color: var(--text-2); font-size: 14px; max-width: 720px; }
+  .section-body { padding: 32px; }
+  .row { display: flex; gap: 32px; flex-wrap: wrap; align-items: flex-end; }
+  .variant { display: flex; flex-direction: column; gap: 10px; }
+  .variant-meta { font-family: 'JetBrains Mono'; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-3); line-height: 1.5; }
+  .variant-meta strong { color: var(--text-2); display: block; margin-bottom: 2px; font-weight: 500; }
+  .variant-meta a { color: var(--teal); text-decoration: none; }
+  .variant-meta a:hover { text-decoration: underline; }
+
+  .bg-light { background: var(--light-bg); padding: 16px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; }
+  .bg-mid { background: var(--bg-2); padding: 16px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; }
+  .bg-tray-dark { background: rgba(32,32,32,0.95); padding: 12px 18px; border-radius: 4px; display: inline-flex; align-items: center; gap: 10px; border: 1px solid rgba(255,255,255,0.05); }
+  .bg-tray-light { background: rgba(243,243,243,0.95); padding: 12px 18px; border-radius: 4px; display: inline-flex; align-items: center; gap: 10px; border: 1px solid rgba(0,0,0,0.06); }
+  img { display: block; image-rendering: pixelated; }
+  img.smooth { image-rendering: auto; }
+
+  .browser-tab { width: 240px; height: 36px; background: #1E293B; border: 1px solid #334155; border-radius: 8px 8px 0 0; display: flex; align-items: center; gap: 10px; padding: 0 12px; font-size: 12px; color: var(--text-2); }
+
+  .files { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; font-family: 'JetBrains Mono'; font-size: 12px; color: var(--text-2); margin-top: 16px; }
+  .files .path { color: var(--teal); }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="top">
+    <h1>WinClip — Brand Assets</h1>
+    <p>Production asset system generated from canonical SVG sources via Puppeteer + Pillow. Every PNG is rendered at its exact target size with Satoshi anti-aliased. All file paths are relative to <code style="font-family:'JetBrains Mono';color:var(--teal);">brand/</code>.</p>
+  </header>
+
+  <!-- ===================== APP ICON ===================== -->
+  <section class="asset">
+    <div class="section-header">
+      <div class="section-label">01 — Windows App Icon</div>
+      <h2>WinClip.ico (multi-resolution bundle)</h2>
+      <p>Embeds 7 PNGs from 16px to 256px. Used for the .exe file icon, Start Menu, Alt+Tab, and Add/Remove Programs.</p>
+    </div>
+    <div class="section-body">
+      <div class="row">
+        <div class="variant">
+          <div class="variant-meta"><strong>256 × 256</strong>app-icon/png/icon-256.png</div>
+          <div class="bg-mid"><img src="app-icon/png/icon-256.png" width="256" height="256" class="smooth"></div>
+        </div>
+        <div class="variant">
+          <div class="variant-meta"><strong>128 × 128</strong>app-icon/png/icon-128.png</div>
+          <div class="bg-mid"><img src="app-icon/png/icon-128.png" width="128" height="128" class="smooth"></div>
+        </div>
+        <div class="variant">
+          <div class="variant-meta"><strong>64 × 64</strong>app-icon/png/icon-64.png</div>
+          <div class="bg-mid"><img src="app-icon/png/icon-64.png" width="64" height="64" class="smooth"></div>
+        </div>
+        <div class="variant">
+          <div class="variant-meta"><strong>48 · 32 · 24 · 16</strong>app-icon/png/icon-*.png</div>
+          <div class="bg-mid" style="gap:8px;">
+            <img src="app-icon/png/icon-48.png" width="48" height="48">
+            <img src="app-icon/png/icon-32.png" width="32" height="32">
+            <img src="app-icon/png/icon-24.png" width="24" height="24">
+            <img src="app-icon/png/icon-16.png" width="16" height="16">
+          </div>
+        </div>
+      </div>
+      <div class="files">
+        <div><span class="path">app-icon/WinClip.ico</span> — multi-res bundle (16/24/32/48/64/128/256)</div>
+        <div><span class="path">app-icon/png/icon-*.png</span> — individual PNGs</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== SYSTEM TRAY ===================== -->
+  <section class="asset">
+    <div class="section-header">
+      <div class="section-label">02 — System Tray</div>
+      <h2>Transparent, theme-aware tray icons</h2>
+      <p>Brackets dropped at 16/20/24 for legibility; HiDPI tray (32/48) restores the full <strong style="color:var(--text);">[W]</strong>. Active state uses teal to signal a clip action firing.</p>
+    </div>
+    <div class="section-body">
+      <div class="row" style="margin-bottom:24px;">
+        <div class="variant">
+          <div class="variant-meta"><strong>Dark Windows theme</strong>tray/transparent/tray-white-*.png</div>
+          <div class="bg-tray-dark">
+            <img src="tray/transparent/tray-white-16.png" width="16" height="16">
+            <img src="tray/transparent/tray-white-20.png" width="20" height="20">
+            <img src="tray/transparent/tray-white-24.png" width="24" height="24">
+            <img src="tray/transparent/tray-white-32.png" width="32" height="32">
+            <img src="tray/transparent/tray-white-48.png" width="48" height="48" class="smooth">
+          </div>
+        </div>
+      </div>
+      <div class="row" style="margin-bottom:24px;">
+        <div class="variant">
+          <div class="variant-meta"><strong>Light Windows theme</strong>tray/transparent/tray-dark-*.png</div>
+          <div class="bg-tray-light">
+            <img src="tray/transparent/tray-dark-16.png" width="16" height="16">
+            <img src="tray/transparent/tray-dark-20.png" width="20" height="20">
+            <img src="tray/transparent/tray-dark-24.png" width="24" height="24">
+            <img src="tray/transparent/tray-dark-32.png" width="32" height="32">
+            <img src="tray/transparent/tray-dark-48.png" width="48" height="48" class="smooth">
+          </div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="variant">
+          <div class="variant-meta"><strong>Active state — accent</strong>tray/transparent/tray-active-*.png</div>
+          <div class="bg-tray-dark">
+            <img src="tray/transparent/tray-active-16.png" width="16" height="16">
+            <img src="tray/transparent/tray-active-20.png" width="20" height="20">
+            <img src="tray/transparent/tray-active-24.png" width="24" height="24">
+            <img src="tray/transparent/tray-active-32.png" width="32" height="32">
+          </div>
+        </div>
+      </div>
+      <div class="files">
+        <div><span class="path">tray/tray-white.ico</span> — dark Windows theme bundle</div>
+        <div><span class="path">tray/tray-dark.ico</span> — light Windows theme bundle</div>
+        <div><span class="path">tray/tray-active.ico</span> — accent/active state bundle</div>
+        <div><span class="path">tray/transparent/*.png</span> — individual transparent PNGs</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== STORE TILES ===================== -->
+  <section class="asset">
+    <div class="section-header">
+      <div class="section-label">03 — Microsoft Store Tiles</div>
+      <h2>Required tile sizes for Store submission</h2>
+      <p>Includes scale-200 and scale-400 variants for HiDPI displays per Microsoft Store packaging spec.</p>
+    </div>
+    <div class="section-body">
+      <div class="row" style="align-items:flex-end;">
+        <div class="variant"><div class="variant-meta"><strong>50 × 50</strong>StoreLogo.png</div><img src="store-tiles/StoreLogo.png" width="50" height="50" class="smooth"></div>
+        <div class="variant"><div class="variant-meta"><strong>44 × 44</strong>Square44x44Logo.png</div><img src="store-tiles/Square44x44Logo.png" width="44" height="44" class="smooth"></div>
+        <div class="variant"><div class="variant-meta"><strong>71 × 71</strong>Square71x71Logo.png</div><img src="store-tiles/Square71x71Logo.png" width="71" height="71" class="smooth"></div>
+        <div class="variant"><div class="variant-meta"><strong>150 × 150</strong>Square150x150Logo.png</div><img src="store-tiles/Square150x150Logo.png" width="150" height="150" class="smooth"></div>
+      </div>
+      <div class="row" style="margin-top:24px;">
+        <div class="variant"><div class="variant-meta"><strong>310 × 150 (wide)</strong>Wide310x150Logo.png</div><img src="store-tiles/Wide310x150Logo.png" width="310" height="150" class="smooth"></div>
+        <div class="variant"><div class="variant-meta"><strong>310 × 310 (large)</strong>Square310x310Logo.png</div><img src="store-tiles/Square310x310Logo.png" width="310" height="310" class="smooth"></div>
+        <div class="variant"><div class="variant-meta"><strong>620 × 300 (splash)</strong>SplashScreen.png</div><img src="store-tiles/SplashScreen.png" width="310" height="150" class="smooth"></div>
+      </div>
+      <div class="files">
+        <div><span class="path">store-tiles/Square44x44Logo.scale-200.png</span> · scale-400.png</div>
+        <div><span class="path">store-tiles/Square150x150Logo.scale-200.png</span></div>
+        <div><span class="path">store-tiles/Wide310x150Logo.scale-200.png</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== INSTALLER ===================== -->
+  <section class="asset">
+    <div class="section-header">
+      <div class="section-label">04 — Installer (Inno Setup)</div>
+      <h2>Wizard banner, header strip, .exe icon</h2>
+      <p>BMP format required by Inno Setup. Reference these in <code style="font-family:'JetBrains Mono';color:var(--teal);">installer/WinClipSetup.iss</code>.</p>
+    </div>
+    <div class="section-body">
+      <div class="row" style="align-items:flex-start;">
+        <div class="variant">
+          <div class="variant-meta"><strong>WizardImageFile · 164 × 314</strong>installer/WizardImage.bmp</div>
+          <img src="installer/WizardImage.png" width="164" height="314" class="smooth">
+        </div>
+        <div class="variant">
+          <div class="variant-meta"><strong>WizardSmallImageFile · 497 × 58</strong>installer/WizardSmallImage.bmp</div>
+          <img src="installer/WizardSmallImage.png" width="497" height="58" class="smooth">
+          <div class="variant-meta" style="margin-top:24px;"><strong>Setup .exe icon</strong>installer/setup-icon.ico</div>
+          <div class="bg-mid" style="gap:8px;">
+            <img src="app-icon/png/icon-48.png" width="48" height="48">
+            <img src="app-icon/png/icon-32.png" width="32" height="32">
+            <img src="app-icon/png/icon-16.png" width="16" height="16">
+          </div>
+        </div>
+      </div>
+      <div class="files">
+        <div><span class="path">installer/WizardImage.bmp</span></div>
+        <div><span class="path">installer/WizardSmallImage.bmp</span></div>
+        <div><span class="path">installer/setup-icon.ico</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== WEB ===================== -->
+  <section class="asset">
+    <div class="section-header">
+      <div class="section-label">05 — Website &amp; Social</div>
+      <h2>Favicon, Apple touch, Android maskable</h2>
+      <p>For <code style="font-family:'JetBrains Mono';color:var(--teal);">duncansmith.tech/apps/winclip</code> and social share links.</p>
+    </div>
+    <div class="section-body">
+      <div class="row" style="margin-bottom:32px;">
+        <div class="variant">
+          <div class="variant-meta"><strong>Browser tab favicon</strong>web/favicon/favicon.ico</div>
+          <div class="browser-tab"><img src="web/favicon/favicon-16.png" width="16" height="16"><span>WinClip — Smart clipboard...</span></div>
+        </div>
+        <div class="variant">
+          <div class="variant-meta"><strong>Apple touch · 180 × 180</strong>web/favicon/favicon-180.png</div>
+          <img src="web/favicon/favicon-180.png" width="90" height="90" class="smooth">
+        </div>
+        <div class="variant">
+          <div class="variant-meta"><strong>Android maskable · 512 × 512</strong>web/favicon/maskable-512.png</div>
+          <img src="web/favicon/maskable-512.png" width="90" height="90" class="smooth">
+        </div>
+        <div class="variant">
+          <div class="variant-meta"><strong>Android chrome · 192 × 192</strong>web/favicon/favicon-192.png</div>
+          <img src="web/favicon/favicon-192.png" width="90" height="90" class="smooth">
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== IN-APP ===================== -->
+  <section class="asset">
+    <div class="section-header">
+      <div class="section-label">06 — In-App Surfaces</div>
+      <h2>Splash &amp; about dialog header</h2>
+    </div>
+    <div class="section-body">
+      <div class="row">
+        <div class="variant">
+          <div class="variant-meta"><strong>Splash screen · 620 × 300</strong>in-app/splash.png</div>
+          <img src="in-app/splash.png" width="480" height="232" class="smooth" style="border-radius:6px;">
+        </div>
+        <div class="variant">
+          <div class="variant-meta"><strong>About dialog header · 420 × 110</strong>in-app/about-header.png</div>
+          <img src="in-app/about-header.png" width="420" height="110" class="smooth" style="border-radius:6px;">
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>

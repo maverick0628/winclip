@@ -1,0 +1,344 @@
+name: Package Manager Release
+
+on:
+  # Auto-chain after Release workflow completes successfully.
+  # workflow_run is used instead of `release: types: [published]` because
+  # releases created by the default GITHUB_TOKEN do NOT trigger downstream
+  # workflows (GitHub safety feature). workflow_run bypasses that.
+  workflow_run:
+    workflows: ["Release"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 2.0.0)'
+        required: true
+      release_tag:
+        description: 'Release tag (e.g., v2.0.0)'
+        required: true
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+jobs:
+  # Fast gate that decides whether to actually run the manifest update.
+  # Skips prereleases (tags like v2.0.0-rc.1, v2.0.0-beta.2, v2.0.0-alpha.1) so
+  # RC dry-runs of release.yml don't end up in winget/choco/scoop manifests.
+  # Runs on ubuntu-latest because it's just gh CLI queries — much cheaper.
+  check-release:
+    name: Check release eligibility
+    runs-on: ubuntu-latest
+    # For workflow_run events, only proceed if the upstream workflow succeeded.
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    outputs:
+      should_run: ${{ steps.check.outputs.should_run }}
+      version: ${{ steps.check.outputs.version }}
+      tag: ${{ steps.check.outputs.tag }}
+    steps:
+      - name: Determine release eligibility
+        id: check
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ github.event.inputs.release_tag }}"
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            TAG=$(gh release list --repo ${{ github.repository }} --limit 1 --json tagName --jq '.[0].tagName')
+            if [ -z "$TAG" ]; then
+              echo "::error::No GitHub release found — release.yml should have published one."
+              exit 1
+            fi
+            VERSION="${TAG#v}"
+          fi
+
+          # Use GitHub's own "isPrerelease" flag as the source of truth. This
+          # is more reliable than pattern-matching the tag because it respects
+          # whatever release.yml decided at publish time (it already flags any
+          # tag containing '-' as prerelease via softprops/action-gh-release).
+          IS_PRERELEASE=$(gh release view "$TAG" --repo ${{ github.repository }} --json isPrerelease --jq '.isPrerelease')
+
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+          if [ "$IS_PRERELEASE" = "true" ]; then
+            echo "::notice::Skipping package manager submission for prerelease $TAG"
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::Stable release $TAG — proceeding with manifest updates"
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  update-manifests:
+    name: Update Package Manifests
+    needs: check-release
+    if: needs.check-release.outputs.should_run == 'true'
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get release information
+        id: release_info
+        shell: pwsh
+        run: |
+          # Reuse tag/version resolved by the check-release gate job so we
+          # have a single source of truth across the workflow.
+          $VERSION = "${{ needs.check-release.outputs.version }}"
+          $TAG = "${{ needs.check-release.outputs.tag }}"
+
+          echo "version=$VERSION" >> $env:GITHUB_OUTPUT
+          echo "tag=$TAG" >> $env:GITHUB_OUTPUT
+
+          # Download URLs point to your website (you host the files)
+          $BASE = "https://duncansmith.tech/apps/winclip/releases/v$VERSION"
+          $URL_X64 = "$BASE/WinClip-$VERSION-x64-Setup.exe"
+          $URL_ARM64 = "$BASE/WinClip-$VERSION-arm64-Setup.exe"
+
+          echo "url_x64=$URL_X64" >> $env:GITHUB_OUTPUT
+          echo "url_arm64=$URL_ARM64" >> $env:GITHUB_OUTPUT
+
+          Write-Host "Version: $VERSION"
+          Write-Host "x64 URL: $URL_X64"
+          Write-Host "ARM64 URL: $URL_ARM64"
+
+      - name: Download release assets from GitHub
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $VERSION = "${{ steps.release_info.outputs.version }}"
+          $TAG = "${{ steps.release_info.outputs.tag }}"
+          New-Item -ItemType Directory -Force -Path "./temp-downloads" | Out-Null
+
+          # Use the authenticated gh CLI with the workflow token.
+          gh release download $TAG --repo ${{ github.repository }} `
+            --pattern "WinClip-$VERSION-x64-Setup.exe" `
+            --pattern "WinClip-$VERSION-arm64-Setup.exe" `
+            --dir ./temp-downloads
+
+      - name: Calculate SHA256 checksums
+        id: checksums
+        shell: pwsh
+        run: |
+          $VERSION = "${{ steps.release_info.outputs.version }}"
+          $HASH_X64 = (Get-FileHash "./temp-downloads/WinClip-$VERSION-x64-Setup.exe" -Algorithm SHA256).Hash
+          $HASH_ARM64 = (Get-FileHash "./temp-downloads/WinClip-$VERSION-arm64-Setup.exe" -Algorithm SHA256).Hash
+
+          echo "hash_x64=$HASH_X64" >> $env:GITHUB_OUTPUT
+          echo "hash_arm64=$HASH_ARM64" >> $env:GITHUB_OUTPUT
+
+          Write-Host "x64 SHA256: $HASH_X64"
+          Write-Host "ARM64 SHA256: $HASH_ARM64"
+
+      - name: Update Winget manifests
+        shell: pwsh
+        run: |
+          $VERSION = "${{ steps.release_info.outputs.version }}"
+          $URL_X64 = "${{ steps.release_info.outputs.url_x64 }}"
+          $URL_ARM64 = "${{ steps.release_info.outputs.url_arm64 }}"
+          $HASH_X64 = "${{ steps.checksums.outputs.hash_x64 }}"
+          $HASH_ARM64 = "${{ steps.checksums.outputs.hash_arm64 }}"
+
+          # Update version manifest. The winget-pkgs repo enforces the
+          # doubled-prefix filename convention (PackageIdentifier.yaml) — the
+          # files here must match so they can be copied verbatim into a fork.
+          $versionFile = "distribution/winget/WinClip.WinClip.yaml"
+          (Get-Content $versionFile) -replace 'PackageVersion: .*', "PackageVersion: $VERSION" | Set-Content $versionFile
+
+          # Generate installer manifest from template — token replacement avoids
+          # the $1<digits> group-reference bug that regex capture groups caused
+          # with SHA256 hashes. Template tokens ({{HASH_X64}} etc.) have no $
+          # prefix so the .NET replacement engine treats them as plain strings.
+          $installerFile = "distribution/winget/WinClip.WinClip.installer.yaml"
+          $templateFile  = "distribution/winget/WinClip.installer.yaml.template"
+          $content = Get-Content $templateFile -Raw
+          $content = $content -replace '{{VERSION}}',   $VERSION
+          $content = $content -replace '{{URL_X64}}',   $URL_X64
+          $content = $content -replace '{{HASH_X64}}',  $HASH_X64
+          $content = $content -replace '{{URL_ARM64}}',  $URL_ARM64
+          $content = $content -replace '{{HASH_ARM64}}', $HASH_ARM64
+          $content | Set-Content $installerFile
+
+          # Update locale manifest
+          $localeFile = "distribution/winget/WinClip.WinClip.locale.en-US.yaml"
+          (Get-Content $localeFile) -replace 'PackageVersion: .*', "PackageVersion: $VERSION" | Set-Content $localeFile
+
+          Write-Host "Updated Winget manifests to v$VERSION"
+
+      - name: Update Chocolatey manifests
+        shell: pwsh
+        run: |
+          $VERSION = "${{ steps.release_info.outputs.version }}"
+          $URL_X64 = "${{ steps.release_info.outputs.url_x64 }}"
+          $HASH_X64 = "${{ steps.checksums.outputs.hash_x64 }}"
+
+          # Update nuspec version
+          $nuspecFile = "distribution/chocolatey/winclip.nuspec"
+          $xml = [xml](Get-Content $nuspecFile)
+          $xml.package.metadata.version = $VERSION
+
+          # releaseNotes carries this version's CHANGELOG section as text, so
+          # the package never points at a changelog page that does not exist.
+          $changelog = Get-Content CHANGELOG.md -Raw
+          $pattern = '(?ms)^## \[' + [regex]::Escape($VERSION) + '\][^\n]*\n(.*?)(?=^## \[|\z)'
+          $match = [regex]::Match($changelog, $pattern)
+          if ($match.Success -and $match.Groups[1].Value.Trim()) {
+            $xml.package.metadata.releaseNotes = $match.Groups[1].Value.Trim()
+          } else {
+            Write-Output "::warning::CHANGELOG.md has no section for $VERSION. releaseNotes points at the product page."
+            $xml.package.metadata.releaseNotes = "https://duncansmith.tech/apps/winclip"
+          }
+          $xml.Save($nuspecFile)
+
+          # Update install script
+          $installScript = "distribution/chocolatey/tools/chocolateyinstall.ps1"
+          $content = Get-Content $installScript -Raw
+          $content = $content -replace "url64\s*=\s*'[^']*'", "url64       = '$URL_X64'"
+          $content = $content -replace "checksum64\s*=\s*'[^']*'", "checksum64     = '$HASH_X64'"
+          $content | Set-Content $installScript
+
+          Write-Host "Updated Chocolatey manifests to v$VERSION"
+
+      - name: Update Chocolatey verification file
+        shell: pwsh
+        run: |
+          # Moderators read VERIFICATION.txt. It went stale at v1.0.0 with
+          # placeholder checksums because nothing regenerated it, so the whole
+          # file is written from here on every release.
+          $VERSION = "${{ steps.release_info.outputs.version }}"
+          $URL_X64 = "${{ steps.release_info.outputs.url_x64 }}"
+          $URL_ARM64 = "${{ steps.release_info.outputs.url_arm64 }}"
+          $HASH_X64 = "${{ steps.checksums.outputs.hash_x64 }}"
+          $HASH_ARM64 = "${{ steps.checksums.outputs.hash_arm64 }}"
+
+          $lines = @(
+            "VERIFICATION"
+            "Verification is intended to assist the Chocolatey moderators and community"
+            "in verifying that this package's contents are trustworthy."
+            ""
+            "This package downloads the official WinClip installer at install time. It is"
+            "not repackaged, and no binary ships inside the package."
+            ""
+            "1. Download the installer from the official WinClip website:"
+            ""
+            "   x64:   $URL_X64"
+            "   arm64: $URL_ARM64"
+            ""
+            "2. Get the SHA256 checksum with either:"
+            "   - the PowerShell function 'Get-FileHash'"
+            "   - the Chocolatey utility 'checksum.exe'"
+            ""
+            "3. The checksums must match these. They are what tools\chocolateyinstall.ps1"
+            "   verifies against, and what SHA256SUMS.txt beside the installers publishes:"
+            ""
+            "   WinClip-$VERSION-x64-Setup.exe"
+            "   SHA256: $HASH_X64"
+            ""
+            "   WinClip-$VERSION-arm64-Setup.exe"
+            "   SHA256: $HASH_ARM64"
+            ""
+            "4. The installers are signed. Check the signature with:"
+            ""
+            "   (Get-AuthenticodeSignature .\WinClip-$VERSION-x64-Setup.exe).SignerCertificate.Subject"
+            ""
+            "   It reads CN=""DST Digital, LLC"", O=""DST Digital, LLC"", L=Atlanta, S=Georgia, C=US."
+            ""
+            "PROJECT INFORMATION"
+            "==================="
+            "Project Site: https://duncansmith.tech/apps/winclip"
+          )
+          Set-Content "distribution/chocolatey/tools/VERIFICATION.txt" -Value $lines
+          Write-Host "Wrote VERIFICATION.txt for v$VERSION"
+
+      - name: Update Scoop manifest
+        shell: pwsh
+        run: |
+          $VERSION = "${{ steps.release_info.outputs.version }}"
+          $URL_X64 = "${{ steps.release_info.outputs.url_x64 }}"
+          $URL_ARM64 = "${{ steps.release_info.outputs.url_arm64 }}"
+          $HASH_X64 = "${{ steps.checksums.outputs.hash_x64 }}"
+          $HASH_ARM64 = "${{ steps.checksums.outputs.hash_arm64 }}"
+
+          $scoopFile = "distribution/scoop/winclip.json"
+          $json = Get-Content $scoopFile | ConvertFrom-Json
+
+          $json.version = $VERSION
+          $json.architecture.'64bit'.url = $URL_X64
+          $json.architecture.'64bit'.hash = $HASH_X64
+          $json.architecture.arm64.url = $URL_ARM64
+          $json.architecture.arm64.hash = $HASH_ARM64
+
+          $json | ConvertTo-Json -Depth 10 | Set-Content $scoopFile
+
+          Write-Host "Updated Scoop manifest to v$VERSION"
+
+      # master is protected by a ruleset that requires a PR and a green `build`
+      # check, so the manifests land through a PR instead of a direct push.
+      # A PR opened with GITHUB_TOKEN doesn't trigger pull_request workflows,
+      # so build.yml is dispatched on the branch to produce the `build` check.
+      # A maintainer reviews and merges it before submitting to the package managers.
+      - name: Open manifest PR
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $VERSION = "${{ steps.release_info.outputs.version }}"
+          $BRANCH = "release/manifests-v$VERSION"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add distribution/
+          if (git diff --cached --quiet) {
+            Write-Host "No changes to commit"
+            exit 0
+          }
+          git checkout -b $BRANCH
+          git commit -m "Update package manifests to v$VERSION"
+          git push --force origin $BRANCH
+          if ($LASTEXITCODE -ne 0) { throw "push to $BRANCH failed" }
+
+          $existing = gh pr list --head $BRANCH --state open --json number --jq '.[0].number'
+          if ($existing) {
+            $PR = $existing
+            Write-Host "Reusing open PR #$PR"
+          } else {
+            $url = gh pr create --base master --head $BRANCH `
+              --title "Update package manifests to v$VERSION" `
+              --body "Winget, Chocolatey and Scoop manifests for v$VERSION, generated by package-release.yml. Merge once the build check passes, then submit to the package managers."
+            if ($LASTEXITCODE -ne 0) { throw "gh pr create failed. Is 'Allow GitHub Actions to create and approve pull requests' on?" }
+            $PR = ($url -split '/')[-1]
+          }
+
+          gh workflow run build.yml --ref $BRANCH
+          if ($LASTEXITCODE -ne 0) { throw "dispatching build.yml on $BRANCH failed" }
+          Write-Host "PR #$PR opened and build dispatched. Merge it once build passes."
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-manifests-${{ steps.release_info.outputs.version }}
+          path: distribution/
+          retention-days: 90
+
+      - name: Summary
+        shell: pwsh
+        run: |
+          $VERSION = "${{ steps.release_info.outputs.version }}"
+          Write-Host "`n=== Package Manager Release Summary ==="
+          Write-Host "Version: $VERSION"
+          Write-Host "`nManifests Updated:"
+          Write-Host "  - Winget (distribution/winget/)"
+          Write-Host "  - Chocolatey (distribution/chocolatey/)"
+          Write-Host "  - Scoop (distribution/scoop/)"
+          Write-Host "`nNext Steps:"
+          Write-Host "  1. Upload installers to https://duncansmith.tech/apps/winclip/releases/v$VERSION/"
+          Write-Host "  2. Submit PR to microsoft/winget-pkgs"
+          Write-Host "  3. Submit to Scoop bucket"
+          Write-Host "  4. Push to Chocolatey: choco push winclip.$VERSION.nupkg --source https://push.chocolatey.org/"
+          Write-Host "`nSee distribution/DISTRIBUTION.md for detailed instructions"

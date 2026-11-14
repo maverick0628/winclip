@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);1591</NoWarn>
+
+    <!-- NuGet Package Metadata -->
+    <PackageId>WinClip.SDK</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>WinClip Contributors</Authors>
+    <Company>WinClip</Company>
+    <Description>The official SDK for developing WinClip plugins. Create powerful clipboard extensions with simple C# code. Includes plugin interfaces, base classes, attributes, and testing tools for building Windows clipboard manager plugins.</Description>
+    <Copyright>Copyright © 2026 WinClip Contributors</Copyright>
+    <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
+    <PackageProjectUrl>https://duncansmith.tech/winclip</PackageProjectUrl>
+    <RepositoryUrl>https://duncansmith.tech/winclip</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>winclip;plugin;sdk;clipboard;windows;extensibility;plugin-development</PackageTags>
+    <PackageReleaseNotes>Initial release of WinClip Plugin Developer SDK with core interfaces, base classes, and testing tools.</PackageReleaseNotes>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageIcon>icon.png</PackageIcon>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="../README.md" Pack="true" PackagePath="\" />
+    <None Include="icon.png" Pack="true" PackagePath="\" />
+    <None Include="LICENSE.txt" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>

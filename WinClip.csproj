@@ -1,0 +1,97 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <ApplicationIcon>installer\Assets\WinClip.ico</ApplicationIcon>
+    <StartupObject>WinClip.Program</StartupObject>
+    <EnableDefaultApplicationDefinition>false</EnableDefaultApplicationDefinition>
+
+    <!-- MSIX / Microsoft Store deployment -->
+    <RuntimeIdentifiers>win-x64;win-arm64</RuntimeIdentifiers>
+
+    <!-- Version / product metadata -->
+    <Version>2.2.0</Version>
+    <AssemblyVersion>2.2.0.0</AssemblyVersion>
+    <FileVersion>2.2.0.0</FileVersion>
+    <Product>WinClip</Product>
+    <Company>WinClip</Company>
+    <Description>Smart clipboard actions for Windows — copy, transform, and paste with a single gesture.</Description>
+    <Copyright>Copyright (c) 2025-2026 DST Digital, LLC</Copyright>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="WinClip.Tests" />
+  </ItemGroup>
+
+  <!-- Resolve WPF vs WinForms type ambiguities (both are enabled) -->
+  <ItemGroup>
+    <Using Include="System.IO" />
+    <Using Include="System.Windows.Application" Alias="Application" />
+    <Using Include="System.Windows.Clipboard" Alias="Clipboard" />
+    <Using Include="System.Windows.MessageBox" Alias="MessageBox" />
+    <Using Include="System.Windows.Controls.Button" Alias="Button" />
+    <Using Include="System.Windows.Media.Color" Alias="Color" />
+    <Using Include="System.Windows.Media.ColorConverter" Alias="ColorConverter" />
+    <Using Include="System.Windows.Input.MouseEventArgs" Alias="MouseEventArgs" />
+  </ItemGroup>
+
+  <!-- Exclude subdirectories that are separate projects -->
+  <ItemGroup>
+    <Compile Remove="src\**" />
+    <Compile Remove="WinClip.Tests\**" />
+    <Compile Remove="WinClip.Integrations\**" />
+    <Compile Remove="WinClip.SDK\**" />
+    <Compile Remove="Templates\**" />
+    <Compile Remove="tools\**" />
+    <Compile Remove="Examples\**" />
+    <Compile Remove="examples\**" />
+    <Compile Remove="Docs\**" />
+    <Page Remove="src\**" />
+
+    <None Remove="src\**" />
+    <None Remove="WinClip.Tests\**" />
+    <None Remove="WinClip.Integrations\**" />
+    <None Remove="WinClip.SDK\**" />
+    <None Remove="Examples\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="8.0.0" />
+    <PackageReference Include="WPF-UI" Version="3.0.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="src\WinClip.Actions\WinClip.Actions.csproj" />
+    <ProjectReference Include="src\WinClip.Core\WinClip.Core.csproj" />
+    <ProjectReference Include="src\WinClip.Extensions\WinClip.Extensions.csproj" />
+    <ProjectReference Include="WinClip.Integrations\WinClip.Integrations.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\pop.wav" />
+    <EmbeddedResource Include="Resources\tray-icon-enabled.ico" LogicalName="WinClip.TrayIcon.Enabled" />
+    <EmbeddedResource Include="Resources\tray-icon-disabled.ico" LogicalName="WinClip.TrayIcon.Disabled" />
+    <EmbeddedResource Include="Resources\selection-policy.json" LogicalName="WinClip.SelectionPolicy" />
+  </ItemGroup>
+
+  <!-- appsettings.json must reach the output directory so IConfiguration loads it AND
+       so SyncAISettingsToAppSettings has a baseline to read+merge into. Without
+       PreserveNewest, the runtime Sync rewrite truncates the file to just the AI section. -->
+  <ItemGroup>
+    <Content Include="appsettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+</Project>

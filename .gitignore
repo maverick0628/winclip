@@ -1,0 +1,61 @@
+# .NET build output
+bin/
+obj/
+*.user
+*.suo
+*.DotSettings
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.sln.docstates
+
+# Test results
+TestResults/
+*.trx
+
+# NuGet
+*.nupkg
+packages/
+
+# Installer output (Inno Setup installers, plus SHA256SUMS.txt and latest.json from release.yml)
+installer/output/*
+!installer/output/.gitkeep
+
+# MSIX output
+AppPackages/
+BundleArtifacts/
+
+# OS files
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Editor and assistant data
+.auto-claude/
+.claude/
+.cursor/
+DECISIONS.*-draft-*.md
+
+# Signing certificates
+*.pfx
+
+# Development planning & internal docs
+DEVELOPMENT_ROADMAP.md
+POST_V2_ROADMAP.md
+LAUNCH.md
+STORE_LISTING.md
+launch/
+screenshots/
+
+# MSIX cache
+WinClip.Package/*.assets.cache
+
+# Brand pipeline — Puppeteer + Chromium are large and reproducible from package.json
+brand/_pipeline/node_modules/
+brand/_pipeline/package-lock.json
+
+# Misc
+nul
+*.log

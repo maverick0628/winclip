@@ -1,0 +1,48 @@
+@import url("https://api.fontshare.com/v2/css?f[]=satoshi@900,700,500&display=swap");
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; -webkit-font-smoothing: antialiased; text-rendering: geometricPrecision; }
+body { font-family: 'Satoshi', system-ui, sans-serif; }
+
+.tile {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 22%;
+  overflow: hidden;
+}
+.tile-dark { background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%); }
+.tile-teal { background: linear-gradient(135deg, #2DD4BF 0%, #14B8A6 100%); }
+.tile-square { border-radius: 0; }
+
+.wm {
+  font-family: 'Satoshi', system-ui, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+.wm .b { font-weight: 500; }
+
+.icon-w {
+  font-family: 'Satoshi', system-ui, sans-serif;
+  font-weight: 900;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+.icon-w .b { font-weight: 500; }
+
+.b-teal .b { color: #2DD4BF; }
+.b-teal-deep .b { color: #14B8A6; }
+.b-white .b { color: #FFFFFF; }
+.b-dark .b { color: #0F172A; }
+.body-white .body, .body-white .w { color: #E2E8F0; }
+.body-pure-white .body, .body-pure-white .w { color: #FFFFFF; }
+.body-dark .body, .body-dark .w { color: #0F172A; }
+.body-deep .body, .body-deep .w { color: #0B1220; }

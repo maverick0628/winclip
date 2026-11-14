@@ -1,0 +1,230 @@
+<Window x:Class="WinClip.UI.HistoryPickerWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="WinClip History"
+        Width="540"
+        Height="520"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ResizeMode="NoResize"
+        WindowStartupLocation="Manual"
+        ShowInTaskbar="False"
+        Topmost="True">
+
+    <Window.Resources>
+        <Style x:Key="IconBtn" TargetType="Button">
+            <Setter Property="FocusVisualStyle" Value="{DynamicResource KeyboardFocus}"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FontFamily" Value="Segoe UI Variable Text, Segoe UI"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Padding" Value="6,2"/>
+            <Setter Property="HorizontalAlignment" Value="Right"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd"
+                                Background="{TemplateBinding Background}"
+                                CornerRadius="6"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource HistoryHoverBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="RowItem" TargetType="ListBoxItem">
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="Bd"
+                                CornerRadius="8"
+                                Background="{TemplateBinding Background}"
+                                Padding="10,8" BorderThickness="1" BorderBrush="Transparent">
+                            <ContentPresenter />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource HistoryHoverBrush}"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource HistorySelectionBrush}"/>
+                                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource HistoryFocusBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Border Margin="8">
+        <Border.Effect>
+            <DropShadowEffect ShadowDepth="2" BlurRadius="20" Color="#0F172A" Opacity="0.20" Direction="270"/>
+        </Border.Effect>
+
+        <Border x:Name="RootBorder" CornerRadius="14" Padding="14">
+            <Border.Background>
+                <LinearGradientBrush x:Name="RootBackground" StartPoint="0,0" EndPoint="0,1">
+                    <GradientStop x:Name="GradientStart" Color="#1E293B" Offset="0"/>
+                    <GradientStop x:Name="GradientEnd" Color="#1A2332" Offset="1"/>
+                </LinearGradientBrush>
+            </Border.Background>
+            <Border.BorderBrush>
+                <SolidColorBrush x:Name="RootBorderBrush" Color="#334155"/>
+            </Border.BorderBrush>
+            <Border.BorderThickness>
+                <Thickness>1</Thickness>
+            </Border.BorderThickness>
+
+            <DockPanel>
+                <!-- Header: search box + title -->
+                <Grid DockPanel.Dock="Top" Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <Border Grid.Column="0"
+                            x:Name="SearchBorder"
+                            CornerRadius="8"
+                            Padding="10,7"
+                            BorderThickness="1">
+                        <Border.Background>
+                            <SolidColorBrush x:Name="SearchBackgroundBrush" Color="#273449"/>
+                        </Border.Background>
+                        <Border.BorderBrush>
+                            <SolidColorBrush x:Name="SearchBorderBrush" Color="#334155"/>
+                        </Border.BorderBrush>
+                        <Grid>
+                            <TextBlock x:Name="SearchPlaceholder"
+                                       Text="Search history…"
+                                       FontFamily="Segoe UI Variable Text, Segoe UI"
+                                       FontSize="13"
+                                       VerticalAlignment="Center"
+                                       IsHitTestVisible="False">
+                                <TextBlock.Foreground>
+                                    <SolidColorBrush x:Name="PlaceholderBrush" Color="#94A3B8"/>
+                                </TextBlock.Foreground>
+                            </TextBlock>
+                            <TextBox x:Name="SearchBox"
+                                     Background="Transparent"
+                                     BorderThickness="0"
+                                     Padding="0"
+                                     FontFamily="Segoe UI Variable Text, Segoe UI"
+                                     FontSize="13"
+                                     CaretBrush="{DynamicResource TextPrimaryBrush}"
+                                     TextChanged="SearchBox_TextChanged"
+                                     PreviewKeyDown="SearchBox_PreviewKeyDown">
+                                <TextBox.Foreground>
+                                    <SolidColorBrush x:Name="SearchTextBrush" Color="#E2E8F0"/>
+                                </TextBox.Foreground>
+                            </TextBox>
+                        </Grid>
+                    </Border>
+
+                    <Button Grid.Column="1"
+                            x:Name="CloseButton"
+                            Style="{StaticResource IconBtn}"
+                            Content="✕"
+                            Margin="8,0,0,0"
+                            Click="CloseButton_Click"
+                            ToolTip="Close (Esc)">
+                        <Button.Foreground>
+                            <SolidColorBrush x:Name="CloseButtonBrush" Color="#94A3B8"/>
+                        </Button.Foreground>
+                    </Button>
+                </Grid>
+
+                <!-- Hint footer -->
+                <TextBlock DockPanel.Dock="Bottom"
+                           x:Name="FooterHint"
+                           FontFamily="Segoe UI Variable Text, Segoe UI"
+                           FontSize="11"
+                           Margin="0,10,0,0"
+                           Text="↑↓ navigate · Enter paste · Ctrl+Enter copy · Ctrl+P pin · Del remove · Esc close">
+                    <TextBlock.Foreground>
+                        <SolidColorBrush x:Name="FooterBrush" Color="#64748B"/>
+                    </TextBlock.Foreground>
+                </TextBlock>
+
+                <!-- Empty state -->
+                <TextBlock x:Name="EmptyState"
+                           Visibility="Collapsed"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           FontFamily="Segoe UI Variable Text, Segoe UI"
+                           FontSize="13"
+                           Text="No clipboard history yet. Copy something to get started.">
+                    <TextBlock.Foreground>
+                        <SolidColorBrush x:Name="EmptyStateBrush" Color="#64748B"/>
+                    </TextBlock.Foreground>
+                </TextBlock>
+
+                <!-- List of items -->
+                <ListBox x:Name="ItemsList"
+                         Background="Transparent"
+                         BorderThickness="0"
+                         Padding="0"
+                         ItemContainerStyle="{StaticResource RowItem}"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                         ScrollViewer.VerticalScrollBarVisibility="Auto"
+                         VirtualizingPanel.IsVirtualizing="True"
+                         VirtualizingPanel.VirtualizationMode="Recycling"
+                         KeyDown="ItemsList_KeyDown"
+                         MouseDoubleClick="ItemsList_MouseDoubleClick">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock Grid.Column="0"
+                                           Text="{Binding PinIcon}"
+                                           FontSize="13"
+                                           Margin="0,0,8,0"
+                                           VerticalAlignment="Center"
+                                           Foreground="{Binding PinForeground}"
+                                           ToolTip="{Binding PinTooltip}"/>
+
+                                <TextBlock Grid.Column="1"
+                                           Text="{Binding Preview}"
+                                           FontFamily="Segoe UI Variable Text, Segoe UI"
+                                           FontSize="13"
+                                           TextTrimming="CharacterEllipsis"
+                                           VerticalAlignment="Center"
+                                           Foreground="{Binding RowForeground}"/>
+
+                                <TextBlock Grid.Column="2"
+                                           Text="{Binding TimeAgo}"
+                                           FontSize="11"
+                                           Margin="10,0,0,0"
+                                           VerticalAlignment="Center"
+                                           Foreground="{Binding TimeAgoForeground}"/>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </DockPanel>
+        </Border>
+    </Border>
+</Window>

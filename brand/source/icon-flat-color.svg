@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" preserveAspectRatio="xMidYMid meet">
+  <defs>
+    <style type="text/css">
+      @import url("https://api.fontshare.com/v2/css?f[]=satoshi@900,700,500&amp;display=swap");
+      .b { font-family: 'Satoshi', system-ui, sans-serif; font-weight: 500; fill: #2DD4BF; }
+      .w { font-family: 'Satoshi', system-ui, sans-serif; font-weight: 900; fill: #E2E8F0; }
+    </style>
+  </defs>
+  <text x="100" y="150" text-anchor="middle" font-size="160">
+    <tspan class="b">[</tspan><tspan class="w">W</tspan><tspan class="b">]</tspan>
+  </text>
+</svg>

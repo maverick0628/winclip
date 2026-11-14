@@ -1,0 +1,30 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- Do not remove this test for UTF-8: if "Ω" doesn't appear as greek uppercase omega letter enclosed in quotation marks, you should use an editor that supports UTF-8, not this one. -->
+<package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
+  <metadata>
+    <id>winclip</id>
+    <version>2.2.0</version>
+    <packageSourceUrl>https://duncansmith.tech/apps/winclip</packageSourceUrl>
+    <owners>duncansmith</owners>
+    <title>WinClip</title>
+    <authors>Duncan Smith</authors>
+    <projectUrl>https://duncansmith.tech/apps/winclip</projectUrl>
+    <licenseUrl>https://github.com/maverick0628/winclip/blob/master/LICENSE</licenseUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <docsUrl>https://duncansmith.tech/apps/winclip</docsUrl>
+    <tags>winclip clipboard clipboard-manager productivity windows text-transform utility</tags>
+    <summary>Smart clipboard actions for Windows — copy, transform, and paste with gestures</summary>
+    <description>WinClip is a lightweight system tray utility that enhances the Windows clipboard with gesture-driven popups and 52 built-in text actions. Double-click to copy, drag-select for a floating toolbar, expand for contextual actions: transform case, format JSON, encode/decode, hash text, extract emails and URLs, convert timestamps, generate QR codes, and more. Free and open source under the MIT licence.</description>
+    <releaseNotes>WinClip is free and open source under the MIT licence.
+
+### Added
+- **Usage statistics now have a switch in Settings.** General → Preferences → "Share anonymous usage statistics". It is off unless you turn it on, and it sends only the name of each action you run and the WinClip version to Plausible, never your text. Before this the setting existed but could only be changed by editing `settings.json`.
+
+### Fixed
+- **Enabling or disabling an extension no longer leaves a stale action list.** If the change landed while the popup or Settings was reading the list, the new action could be missing, or the removed one still shown, until another action was registered or removed. The registry now clears its cached list under the same lock that rebuilds it.</releaseNotes>
+    <copyright>Copyright (c) 2025-2026 DST Digital, LLC</copyright>
+  </metadata>
+  <files>
+    <file src="tools\**" target="tools" />
+  </files>
+</package>
