@@ -74,6 +74,29 @@ public class UpdateServiceTests
         Assert.ThrowsAny<Exception>(() => service.ApplyUpdate("nonexistent.exe"));
     }
 
+    // TASK-0109: the path an installed copy takes after a download. coreclr.dll carries
+    // a valid Microsoft Authenticode signature, so only the signer pin can refuse it.
+    // Copied under an installer's name, it must be refused before anything launches.
+    [Fact]
+    public void ApplyUpdate_RefusesAValidlySignedInstallerFromAnotherSigner()
+    {
+        var signed = Path.Combine(System.Runtime.InteropServices.RuntimeEnvironment.GetRuntimeDirectory(), "coreclr.dll");
+        Assert.True(File.Exists(signed), $"missing {signed}");
+        var installer = Path.Combine(Path.GetTempPath(), $"WinClipSetup-foreign-{Guid.NewGuid():N}.exe");
+        File.Copy(signed, installer);
+        try
+        {
+            using var service = new UpdateService(Mock.Of<ILogger<UpdateService>>(), BuildConfig());
+            var refused = Assert.Throws<InvalidOperationException>(() => service.ApplyUpdate(installer));
+            Assert.StartsWith("Refusing to launch unsigned or untrusted installer", refused.Message);
+            Assert.DoesNotContain("Authenticode verification failed", refused.Message);
+        }
+        finally
+        {
+            File.Delete(installer);
+        }
+    }
+
     [Fact]
     public void Dispose_CanBeCalledMultipleTimes()
     {
