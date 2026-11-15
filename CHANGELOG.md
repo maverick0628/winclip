@@ -1,16 +1,5 @@
 # Changelog
 
-## Unreleased
-
-- WinClip is now free and open source under the MIT licence. The 30-day trial, licence files and the activation dialog are removed.
-- Refined native Windows theme with flat surfaces, clearer contrast and consistent system typography.
-- Popup actions appear together with a short fade, respecting Windows animation preferences.
-- Search all settings and action names on one continuous page with persistent section context.
-- Correct popup and history placement on secondary and scaled displays.
-- Keep popup interaction responsive when another application's accessibility provider stalls.
-- Show clipboard-history copy failures instead of reporting success or pasting an old clip.
-
-
 All notable changes to WinClip will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
@@ -18,7 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-11-14
+
 ### Changed
+- **WinClip is now free and open source under the MIT licence.** The 30-day trial, licence files and the activation dialog are removed. If your trial had already ended, download this version from https://duncansmith.tech/apps/winclip/ and install it over the old one; an expired copy cannot update itself.
+- Refined native Windows theme with flat surfaces, clearer contrast and consistent system typography.
+- Popup actions appear together with a short fade, respecting Windows animation preferences.
+- Search all settings and action names on one continuous page with persistent section context.
+- Correct popup and history placement on secondary and scaled displays.
+- Keep popup interaction responsive when another application's accessibility provider stalls.
+- Show clipboard-history copy failures instead of reporting success or pasting an old clip.
+
 - **Fewer popups where you didn't select text.** WinClip now ignores a drag or double-click while Ctrl, Alt or the Windows key is held, and a drag where the pointer was never a text cursor, such as moving a window, dragging a scrollbar or rubber-band selecting files. Double-clicks still work with the normal arrow pointer, and apps with their own pointer are never blocked. Clicks that open or close a menu, dropdown or dialog under the pointer are ignored too. Turn these checks off in Settings → General → "Only pop up over text".
 
 - **WinClip stays out of remote-desktop and drawing apps.** In Remote Desktop, Hyper-V, VMware, VirtualBox, Parsec, AnyDesk, TeamViewer and similar, a Ctrl+C would land on the remote machine. In Photoshop, Illustrator, Blender, Krita, GIMP, Paint and similar, drags are painting or moving objects, not selecting text. Alacritty, WezTerm, Tabby, Hyper and Warp are now treated as terminals. These rules ship with WinClip; your own excluded apps still apply on top.
