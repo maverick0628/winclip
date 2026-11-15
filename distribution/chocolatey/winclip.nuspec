@@ -3,7 +3,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2015/06/nuspec.xsd">
   <metadata>
     <id>winclip</id>
-    <version>2.2.0</version>
+    <version>2.3.0</version>
     <packageSourceUrl>https://duncansmith.tech/apps/winclip</packageSourceUrl>
     <owners>duncansmith</owners>
     <title>WinClip</title>
@@ -15,13 +15,28 @@
     <tags>winclip clipboard clipboard-manager productivity windows text-transform utility</tags>
     <summary>Smart clipboard actions for Windows — copy, transform, and paste with gestures</summary>
     <description>WinClip is a lightweight system tray utility that enhances the Windows clipboard with gesture-driven popups and 52 built-in text actions. Double-click to copy, drag-select for a floating toolbar, expand for contextual actions: transform case, format JSON, encode/decode, hash text, extract emails and URLs, convert timestamps, generate QR codes, and more. Free and open source under the MIT licence.</description>
-    <releaseNotes>WinClip is free and open source under the MIT licence.
+    <releaseNotes>### Changed
+- **WinClip is now free and open source under the MIT licence.** The 30-day trial, licence files and the activation dialog are removed. If your trial had already ended, download this version from https://duncansmith.tech/apps/winclip/ and install it over the old one; an expired copy cannot update itself.
+- Refined native Windows theme with flat surfaces, clearer contrast and consistent system typography.
+- Popup actions appear together with a short fade, respecting Windows animation preferences.
+- Search all settings and action names on one continuous page with persistent section context.
+- Correct popup and history placement on secondary and scaled displays.
+- Keep popup interaction responsive when another application's accessibility provider stalls.
+- Show clipboard-history copy failures instead of reporting success or pasting an old clip.
 
-### Added
-- **Usage statistics now have a switch in Settings.** General → Preferences → "Share anonymous usage statistics". It is off unless you turn it on, and it sends only the name of each action you run and the WinClip version to Plausible, never your text. Before this the setting existed but could only be changed by editing `settings.json`.
+- **Fewer popups where you didn't select text.** WinClip now ignores a drag or double-click while Ctrl, Alt or the Windows key is held, and a drag where the pointer was never a text cursor, such as moving a window, dragging a scrollbar or rubber-band selecting files. Double-clicks still work with the normal arrow pointer, and apps with their own pointer are never blocked. Clicks that open or close a menu, dropdown or dialog under the pointer are ignored too. Turn these checks off in Settings → General → "Only pop up over text".
+
+- **WinClip stays out of remote-desktop and drawing apps.** In Remote Desktop, Hyper-V, VMware, VirtualBox, Parsec, AnyDesk, TeamViewer and similar, a Ctrl+C would land on the remote machine. In Photoshop, Illustrator, Blender, Krita, GIMP, Paint and similar, drags are painting or moving objects, not selecting text. Alacritty, WezTerm, Tabby, Hyper and Warp are now treated as terminals. These rules ship with WinClip; your own excluded apps still apply on top.
+
+- **Actions read your selection without touching the clipboard** in apps that expose it to Windows accessibility, such as browsers, Office and Notepad. Elsewhere WinClip still copies to read the text, then puts your previous clipboard back, formatting included, unless something else was copied in the meantime. Password-manager clipboards are never saved.
 
 ### Fixed
-- **Enabling or disabling an extension no longer leaves a stale action list.** If the change landed while the popup or Settings was reading the list, the new action could be missing, or the removed one still shown, until another action was registered or removed. The registry now clears its cached list under the same lock that rebuilds it.</releaseNotes>
+- **WinClip no longer sends Ctrl+C into terminals.** In Windows Terminal, Command Prompt, Git Bash and similar, Ctrl+C with nothing selected stops the running program. WinClip now reads terminal selections through accessibility and does nothing if there is no selection.
+- **Double-clicking a word already on the clipboard now shows the popup.** WinClip used to compare the copied text with what was there before, so copying the same word again looked like no copy at all.
+- **Actions no longer run on stale clipboard text.** If the copy before an action never lands, WinClip says so instead of running the action on whatever was on the clipboard before.
+
+### Security
+- **Updates install only if DST Digital signed them.** The updater accepted any validly signed installer whose signer name merely contained "DST Digital" or "Duncan Smith", and those names came from `appsettings.json`. It now requires the exact Trusted Signing identity of DST Digital, LLC, Microsoft's ID Verified chain and the certificate-profile marker unique to WinClip's signing account, all compiled into the app. Release builds also ignore any update feed URL set in `appsettings.json`, environment variables or command-line arguments.</releaseNotes>
     <copyright>Copyright (c) 2025-2026 DST Digital, LLC</copyright>
   </metadata>
   <files>

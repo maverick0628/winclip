@@ -2,7 +2,7 @@ $ErrorActionPreference = 'Stop'
 
 $packageName = 'winclip'
 $toolsDir    = "$(Split-Path -parent $MyInvocation.MyCommand.Definition)"
-$url64       = 'https://duncansmith.tech/apps/winclip/releases/v2.2.0/WinClip-2.2.0-x64-Setup.exe'
+$url64       = 'https://duncansmith.tech/apps/winclip/releases/v2.3.0/WinClip-2.3.0-x64-Setup.exe'
 
 $packageArgs = @{
   packageName    = $packageName
@@ -15,11 +15,12 @@ $packageArgs = @{
   validExitCodes = @(0)
 
   # SHA256 checksum — update when building the release
-  checksum64     = '730F24B89F251663CD09C9DF8A13774A253AE27961E5F22FC8B2C3C8767DBDF8'
+  checksum64     = '5C3859523FFC1325084761A76CAFDDC118A13DE70B1674B479C31EF3EF828AB5'
   checksumType64 = 'sha256'
 }
 
 Install-ChocolateyPackage @packageArgs
+
 
 
 
