@@ -10,7 +10,7 @@
   <Identity
     Name="duncansmith.tech.WinClip"
     Publisher="CN=8365DA24-AC51-45A9-87E5-7606917ECDEE"
-    Version="2.2.0.0" />
+    Version="2.3.0.0" />
 
   <mp:PhoneIdentity PhoneProductId="00000000-0000-0000-0000-000000000000"
                     PhonePublisherId="00000000-0000-0000-0000-000000000000"/>
