@@ -1,7 +1,7 @@
 # yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.6.0.schema.json
 
 PackageIdentifier: WinClip.WinClip
-PackageVersion: 2.2.0
+PackageVersion: 2.3.0
 InstallerType: inno
 Scope: user
 InstallModes:
@@ -18,11 +18,11 @@ Dependencies:
   - PackageIdentifier: Microsoft.DotNet.DesktopRuntime.8
 Installers:
 - Architecture: x64
-  InstallerUrl: https://duncansmith.tech/apps/winclip/releases/v2.2.0/WinClip-2.2.0-x64-Setup.exe
-  InstallerSha256: 730F24B89F251663CD09C9DF8A13774A253AE27961E5F22FC8B2C3C8767DBDF8
+  InstallerUrl: https://duncansmith.tech/apps/winclip/releases/v2.3.0/WinClip-2.3.0-x64-Setup.exe
+  InstallerSha256: 5C3859523FFC1325084761A76CAFDDC118A13DE70B1674B479C31EF3EF828AB5
 - Architecture: arm64
-  InstallerUrl: https://duncansmith.tech/apps/winclip/releases/v2.2.0/WinClip-2.2.0-arm64-Setup.exe
-  InstallerSha256: 2BF03F18DEB43623C76B69709F54A86034353E89DBC74644AC20EE805A92C6AE
+  InstallerUrl: https://duncansmith.tech/apps/winclip/releases/v2.3.0/WinClip-2.3.0-arm64-Setup.exe
+  InstallerSha256: 5013F75E353D80263F7AE26CAA3D78438E8A881ED88E7EDA47BD91FBC00D3AF1
 ManifestType: installer
 ManifestVersion: 1.6.0
 
