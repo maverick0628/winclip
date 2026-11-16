@@ -1,11 +1,8 @@
-# Completed — 2026-11-16 — Replace the pop sound
+# Active — 2026-11-16 — Restore the original pop
 
-- [x] Synthesize an original crisp pop and preserve the embedded resource path.
-- [x] Record reproducible generation and provenance under the project licence.
-- [x] Verify PCM format, duration, peak level, deterministic output and unchanged playback wiring.
-- [x] Independent review approved the asset, generator and provenance.
-- [x] Open PR 4 for Windows build/test CI; no installer release.
+- [x] Restore the exact pre-PR-4 Git blob without audio processing.
+- [x] Remove the rejected generator and inaccurate provenance note.
+- [x] Verify byte equality and unchanged playback wiring.
+- [ ] Windows CI and reviewed merge; completion evidence is the PR build check and merge receipt.
 
-Merge is gated on the latest required CI result.
-
-Local checks passed: deterministic SHA-256, PCM format, zero endpoints, no clipping and unchanged resource/playback wiring. Windows playback and subjective listening are not yet verified.
+No installer release is included.
