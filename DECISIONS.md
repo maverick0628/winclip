@@ -6,7 +6,7 @@ Newest first.
 
 Replace the sound with an original 85 ms PCM pop generated from documented oscillator equations, without using the former asset as input. Keep the resource path and playback implementation unchanged; this addresses provenance for future builds, not old releases or history. No new installer is released by this change.
 
-The managed-worktree request did not return a usable checkout, so this task uses a dedicated Git worktree.
+The managed-worktree request returned only after work had begun in a dedicated Git worktree. The unused managed checkout is being archived; the dedicated worktree preserves this task.
 
 ## 2026-11-14 — WinClip is free and MIT-licensed
 
