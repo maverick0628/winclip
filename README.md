@@ -18,7 +18,7 @@
 
 WinClip is a lightweight system tray utility that enhances the Windows clipboard with gesture-driven popups, contextual text actions, and a theme-aware UI. It runs silently in the background, augmenting your existing workflow without requiring any behavior changes.
 
-> **v2.2.0** — Available via Microsoft Store, Winget and Chocolatey. See [INSTALL.md](INSTALL.md) for details.
+> Get the [latest GitHub release](https://github.com/maverick0628/winclip/releases/latest) for x64 and ARM64 installers, or see [INSTALL.md](INSTALL.md) for package-manager and Microsoft Store options.
 
 ## How It Works
 
